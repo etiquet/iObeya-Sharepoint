@@ -56,7 +56,6 @@ function startSync() {
 	try {
 		if (lockSync == true) 
 			throw new InterfaceException("Une autre instance est déjà en cours, veuillez patienter.\nlockSync==true");
-        console.log("test");
         // Pour détecter qu'une autre thread est active
         // la valeur false est positionnée après l'affichage du pop-up de fin.
         lockSync=true; 
@@ -106,7 +105,6 @@ function syncNotes(iObeyaNodes){
 		    
 		      // Synchronisation
 		      syncList = performSyncAction(ridaNodes,iObeyaNodes,syncList);
-		      console.log(syncList);
 		      
 		      // Lancement des mises à jours iObeya
 				// TODO demander à vivien pourquoi il appelle les fonctions suivantes même si il n'y avait rien à modifier.
@@ -583,6 +581,17 @@ var boardfound=0;
 		// TODO: approfondir les tests ici et crier si nécessaire
 		// véridier si l'on a bien le nombre de board attendu ou s'il en manque...
 		// vérifier si g_defaultboard_index n'est pas vide
+    
+        console.log(boardfound);
+        console.log(boardsToSync.length)
+        console.log(g_defaultboard_index);
+        if (boardfound != boardsToSync.length) {
+            throw new InterfaceException("Le nombre de tableaux a synchronisé est différent du nombre de tableaux attendus");
+        }
+        
+        if ( g_defaultboard_index == null ) {
+            throw new InterfaceException("Aucun tableau n'a été sélectionné");
+        }
 
 		if (boardfound == 0) { // pas de board trouvé, on arrête.
 				throw new InterfaceException("Aucun tableau specifié dans le fichier de configuration n'a été trouvé dans la Room : " + board + ", vérifiez la configuration ");
@@ -652,8 +661,6 @@ var myxmlr = null;
 			iO_nodes.sort(function(obj1, obj2) {
 				return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);
 			});
-            console.log("Nodes for " + boardname);
-            console.log(iO_nodes);
             			
             // mettre ds func 
 			//syncMethod(nodes);
@@ -808,6 +815,17 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj){
         newNote.asset = null;
         newNote.fontFamily = "arial";
 		
+        // Récupérer tous les éléments qui chevauchent le post-it
+	    var overlappingElements = findOverlappingElements(newNote, nodesiObeya);
+	    
+	    try {
+			newNote = placeElement(roll, newNote, ridaObj.status, nodesiObeya, overlappingElements);
+		}
+	    catch (e) {
+	    	alert(e.message);
+	    	return [];
+	    }
+        
 	    // Etiquette du responsable
 	    var newLabel = null;
 	    if (ridaObj.actor != null) {
@@ -832,16 +850,7 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj){
 		    nodesiObeya.push(newPriority);
 	    }
          
-	    // Récupérer tous les éléments qui chevauchent le post-it
-	    var overlappingElements = findOverlappingElements(newNote, nodesiObeya);
 	    
-	    try {
-			newNote = placeElement(roll, newNote, ridaObj.status, nodesiObeya, overlappingElements);
-		}
-	    catch (e) {
-	    	alert(e.message);
-	    	return [];
-	    }
 		      
 	    newNote.container = {
 	        '@class': 'com.iobeya.dto.EntityReferenceDTO',
@@ -1031,9 +1040,7 @@ function getBoardidFromRidaObj(ridaObj){
             }
 	
 	// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
-	// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
-	// TODO : évaluer s'il faut un message d'erreur à l'utilisateur. Pas défaut non.
-			
+	// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)			
 	console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.subject +" est vide, utilisation du panneau par défaut : " + g_iO_boards[g_defaultboard_index].name);
 	return g_iO_boards[g_defaultboard_index].id;  // valeur par défaut.
 }
@@ -1109,6 +1116,10 @@ function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj){
 	        label3 = new Date(ridaObj.dueDate).format(dateFormat);
         if (ridaObj.modifier != null)
 		    note.modifier = ridaObj.modifier;
+        if (ridaObj.PanneauiObeya != null) {
+            note.boardid = getBoardidFromRidaObj(ridaObj);
+            note.boardname = ridaObj.PanneauiObeya;
+        }
         
         /* New properties for version 3.3 for iObeya*/
 
@@ -1335,14 +1346,11 @@ function refreshTable() {
 	AJAXRefreshView(evtAjax, SP.UI.DialogResult.OK);
 }
 
-/*** 
-	Récupération de la liste des acteurs de la banque de termes SharePoint dans une seule liste : actorsTermsList
-	utilisée au sein de la fonction getLabelProperties(ridaItem, iObeyaLabel) qui sert pour la synchro des notes
-	
-	Cette fonction différe de  retrieveActorsList_refresh() (dans fichier celle dans interfaceRefreshActors.js)
-	car elle créée un  tableau de bord pour la synchro de la taxonomie par tableau par tableau
-***/
+// TODO: FAIRE instancier le nombre d'objet selon le nombre de panneau ? une boucle sur le nombre de terme du panneaux...
+// ajouter un array / d'array() selon la liste en préférence
+// fonction dupliquée dans le fichier interface refresh actors....
 
+/*** Récupération de la liste des acteurs de la banque de termes SharePoint ***/
 function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même fonction appelée dans call refreshactor.asp
     var context, taxonomySession, termStore, parentTerm, terms, termSet,termsEnumerator, currentTerm;
 
@@ -1351,7 +1359,7 @@ function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même
     termStore = taxonomySession.get_termStores().getById(taxonomyId);
 	actorsTermsList.length = 0; // vider l'array au cas où..., sans déréférencer l'objet.
 
-	// ne pas utiliser les sub lists prendre l'ensemble des termes en dessous.
+	if (UseActorsSubSetList ==false) { // ne pas utiliser les sub lists prendre l'ensemble des termes en dessous.
 		termSet = termStore.getTermSet(actorsSetId); // on utilise le actorsSetId
 		terms = termSet.getAllTerms(); // including chirld
 		
@@ -1365,9 +1373,94 @@ function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même
 				actorsTermsList.push(currentTerm);
 				}
 			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message()); }));		
-
+		
+	} else {
+		
+		for (var i in actorsSubSetIdList) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
+			termSet = termStore.getTermSet(actorsSubSetIdList[i]);
+			terms = parentTerm.getAllTerms();  //load child Terms;
+			
+			context.load(terms);
+			context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
+				termsEnumerator = terms.getEnumerator();
+				// Récupération des acteurs
+				while (termsEnumerator.moveNext()) {
+					currentTerm = termsEnumerator.get_current();
+					actorsTermsList.push(currentTerm);
+					}
+			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message());	}));
+		} // for (var i...)
+	}// else
 	
 } // fin retrieveActorsList_sync
 
 /*** Action de synchronisation avec iObeya ***/
 // duplication vis à vis du fichier interfacerefresh actors.
+
+/*function syncActors_sync(iObeyaNodes){ // postfix _sync pour dissocier de la même fonction appelée dans call refreshactor.asp
+	
+	try {
+	
+		// 1) Récupération des étiquettes du bloc "Ressources"
+		//actorsSubSetId
+		// TODO: boucle par panneau !!!!
+		
+		var resourceRoll = findRollbyLabelName(iObeyaNodes, RESOURCES_ZONE,null); // TODO: prendre la valeur de la boucle
+		var labelList = findActorsInRectangle(resourceRoll.x, resourceRoll.y, resourceRoll.x + resourceRoll.width, resourceRoll.y + resourceRoll.height, iObeyaNodes);
+
+		// 2) Liste des nouvelles étiquettes à placer
+		var labelsToCreate = [];
+		var rollObject = findRollbyLabelName(iObeyaNodes, RESOURCES_ZONE,null); // TODO: prendre la valeur de la boucle
+		for (var id in actorsTermsList) {
+			var actorFound = false;
+			for (var j in labelList) {
+				if (actorsTermsList[id].get_name() == labelList[j].contentLabel) {
+					actorFound = true;
+				}
+			}
+			if (actorFound == false) {
+				// Créer le label
+				var ridaFormatedObject = getRidaFormatedObject(actorsTermsList[id].get_name());
+				var newLabel = createActorLabel(ridaFormatedObject);
+				
+				// Push le label
+	    		iObeyaNodes.push(newLabel);
+	    		
+	    		// Placer le label
+	    		try {
+		    		newLabel = placeElement(rollObject, newLabel, RESOURCES_ZONE, iObeyaNodes, Array());
+
+		    		labelsToCreate.push(newLabel);
+		    	}
+				catch(e) {
+					alert(e.message);
+					return [];
+				}
+			}
+		}
+		
+		// Rafraîchissement du rouleau
+	    updateiObeyaNode([rollObject]);
+	    
+		// Commit les labels
+		if (labelsToCreate.length > 0) {
+		    createiObeyaNode(labelsToCreate, close);
+		}
+		else {
+			close();
+		}
+	}
+	catch (e) {
+		// On informe l'utilisateur de la raison de l'erreur
+		displayException(e);
+	}
+	
+	function getRidaFormatedObject(actor) {
+		var ridaObj = [];
+		ridaObj.creationDate = new Date().getTime();
+		ridaObj.actor = actor;
+		
+		return ridaObj;
+	}
+	
+} */
