@@ -14,11 +14,10 @@ function findRollbyLabelName(nodesiObeya, name, boardid) {
 		} else {
 			l_name = name.toLocaleUpperCase();
 		}
-		
 		l_boardid=boardid;
 		// si le boardid est vide on place le panneau par defaut ( defaut = premier de la liste )
 		if (l_boardid == null)
-			l_boardid=g_iO_boards[g_defaultboard_index].id; // g_defaultboard_index est calculé lors du parsing des object iobeya
+			l_boardid=g_defaultboard_index; // g_defaultboard_index est calculé lors du parsing des object iobeya
 
 		
 		for (i in nodesiObeya) { // on scanne la liste de node iObeya
@@ -32,7 +31,7 @@ function findRollbyLabelName(nodesiObeya, name, boardid) {
 							// Vérifie que le label est inclus dans le roll
                             if (isPointInRectangle(label.x + label.width / 2, label.y + label.height / 2,
                                         roll.x, roll.y, roll.x + roll.width, roll.y + roll.height)) {
-                                return roll; // retourne le resultat
+                                return roll;
                             }
                         }
 					}
@@ -46,7 +45,6 @@ function findRollbyLabelName(nodesiObeya, name, boardid) {
 		}
 	
 		return findRollbyLabelName(nodesiObeya, DROP_ZONE,l_boardid); // Si aucune zone n'a été trouvé, on place dans la DropZone (appel récursif)
-
 	} catch (e) {
 		throw e;
 	}
@@ -245,8 +243,8 @@ function placeLabel(label, note) {
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "% achevé" à la création ***/
 function placePercentCompleteSticker(sticker, note) {
-	sticker.x = note.x + note.width - sticker.width/2;
-	sticker.y = note.y + note.height - sticker.height/2;
+	sticker.x = note.x + note.width - sticker.width;
+	sticker.y = note.y + note.height - sticker.height;
 	sticker.zOrder = note.zOrder+1;
 
 	return sticker;
