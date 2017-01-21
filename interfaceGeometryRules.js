@@ -64,7 +64,7 @@ function findOverlappingElements(note, nodesiObeya){
 	var overLappingElements = Array();
 	
 	// Ne conserver que les éléments situés "au-dessus" du post-it
-    // Vérifier sur les post-it sont bien dans le même tableau
+    // Vérifier sur les elements sont bien dans le même tableau que la note
 	for (i in foundElements) {
 		if (foundElements[i].zOrder > note.zOrder && foundElements[i].boardid == note.boardid) {
             console.log("note dans: " + note.boardname);
