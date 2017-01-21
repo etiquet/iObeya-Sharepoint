@@ -1116,9 +1116,9 @@ function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj){
 	        label3 = new Date(ridaObj.dueDate).format(dateFormat);
         if (ridaObj.modifier != null)
 		    note.modifier = ridaObj.modifier;
-        if (ridaObj.PanneauiObeya != null) {
+        if (ridaObj.PanneauiObeya != null) { // TODO: si le panneau n'est pas vide on place dans la note la prop boardid. Note : iObeya n'utilise pas cette variable pour l'instant. Est-ce utile ? conflit dans une version future ?
             note.boardid = getBoardidFromRidaObj(ridaObj);
-            note.boardname = ridaObj.PanneauiObeya;
+            note.boardname = ridaObj.PanneauiObeya; // TODO: si ce champs est vide dans le RIDA quel impact ?
         }
         
         /* New properties for version 3.3 for iObeya*/
@@ -1359,7 +1359,8 @@ function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même
     termStore = taxonomySession.get_termStores().getById(taxonomyId);
 	actorsTermsList.length = 0; // vider l'array au cas où..., sans déréférencer l'objet.
 
-	if (UseActorsSubSetList ==false) { // ne pas utiliser les sub lists prendre l'ensemble des termes en dessous.
+	/* if (UseActorsSubSetList ==false) { // condition sortie voir plus bas */
+	
 		termSet = termStore.getTermSet(actorsSetId); // on utilise le actorsSetId
 		terms = termSet.getAllTerms(); // including chirld
 		
@@ -1374,7 +1375,14 @@ function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même
 				}
 			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message()); }));		
 		
-	} else {
+	/*
+		Dans la nouvelle logique multipanneaux, tous les termes "acteurs" doivent être récupérés. On n’utilise plus "UseActorsSubSetList".
+		Cette fonction récupère l’ensemble des termes au niveau racine et sous niveaux 
+		L’array actorsTermsList doit contenir la liste complète pour que la logique de synchro fonctionne, il n’y a plus de variante nécessaire.
+
+		// ne pas utiliser les sub lists prendre l'ensemble des termes en dessous.
+	
+		} else {
 		
 		for (var i in actorsSubSetIdList) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
 			termSet = termStore.getTermSet(actorsSubSetIdList[i]);
@@ -1390,14 +1398,19 @@ function retrieveActorsList_sync() { // postfix _sync pour dissocier de la même
 					}
 			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message());	}));
 		} // for (var i...)
-	}// else
+	}// else 
+	*/
 	
+
 } // fin retrieveActorsList_sync
 
 /*** Action de synchronisation avec iObeya ***/
 // duplication vis à vis du fichier interfacerefresh actors.
 
-/*function syncActors_sync(iObeyaNodes){ // postfix _sync pour dissocier de la même fonction appelée dans call refreshactor.asp
+/*
+TODO: Fonction sauvegardée ici en backup, elle n'est pas appelée dans le cadre d'une synchro classique.
+
+function syncActors_sync(iObeyaNodes){ // postfix _sync pour dissocier de la même fonction appelée dans call refreshactor.asp
 	
 	try {
 	
