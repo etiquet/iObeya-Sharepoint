@@ -110,8 +110,6 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 				lastDate = Math.max(lastDate, iObeyaOverlapping[i].modificationDate);
 			}
 		}
-
-	
 	return lastDate;
 }
 
@@ -136,6 +134,7 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	
 		// Type d'affichage
 		displayType = display_list; // Par défaut : liste
+		
 		for (i in stackNotes) {
 			if (stackNotes[i].toUpperCase() === status.toUpperCase()) {
 				displayType = display_stack; // Stack
@@ -218,14 +217,14 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	    element.zOrder = lastZOrder;
 
 	    // Translation des éléments qui le chevauchent
-	    for (var i=0; i < overLappingElements.length; i++) {
-	    	overLappingElements[i].x += u;
-	    	overLappingElements[i].y += v;
-	    	overLappingElements[i].zOrder = lastZOrder + 1;
-	    }
+		if (overLappingElements)
+	    	for (var i in overLappingElements) {
+				overLappingElements[i].x += u;
+				overLappingElements[i].y += v;
+				overLappingElements[i].zOrder = lastZOrder + 1;
+	    		}
 	    
 	    return element;
-    
     }
     catch(e) {
     	throw e;

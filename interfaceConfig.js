@@ -31,6 +31,7 @@ var NOTE_DEFAULT_MARGIN_TOP  = 150;
 var NOTE_DEFAULT_MARGIN  = 20;
 var NOTE_STACK_MARGIN  = 70;
 
+var TOLERANCEINTERVAL = 10000; // temps minimum pour prendre en compte une modification
 
 /*** 
 	
@@ -39,20 +40,10 @@ var NOTE_STACK_MARGIN  = 70;
 	
 ***/
 
-
-/*** 
-	
-	Section : Paramétrage plateforme Capgemini
-	
-***/
-
-/*** Paramétrage plateforme Dev Capgemini ***/
 // Paramétrage iObeya
 
-var iObeyaURL = "https://devptf.iobeya.com";		
-// var BOARD_NAME = "SuiviCoproj"; // ENV CAPGEMINI // TODO: cette variable doit être supprimée ?
-// Tableaux de iObeya
-var boardsToSync = ["SuiviCoProj", "SuiviBSU", "SuiviBOE", "SuiviCOT"];
+var IOBEYAURL = "https://devptf.iobeya.com";		
+var BOARDSTOSYNC = ["SuiviCoProj", "SuiviBSU", "SuiviBOE", "SuiviCOT"]; // Tableaux de iObeya
 
 var ROOM_NAME = "CAP - SIAé";
 var DROP_ZONE = "A faire";
@@ -61,19 +52,16 @@ var DELETED_STATUS = "Supprimé";
 
 // Paramétrage Sharepoint
 
-var listTitle = "RIDA suivi de projet";
-var siteUrl = '/sites/pfe';
-var ridaUrl = '/sites/pfe/Lists/RIDA v2/MyItems.aspx';
-
-var taxonomyId = "47054502770442c58d2e27173b0a6dab"; // "Collection de sites - devptf.sharepoint.com-sites-pfe dev Capgemini "
-var actorsSetId = "62bc99d5-39ae-4cae-9d6d-4e5c00c2ae30"; // "ActeurTerme" TERMSET
-var actorsSubSetId = '157a0c3f-2085-4f56-b224-85771c3c3af1'; // "SIAé" TODO: a decommissioner ???
-var actorsSubSetIdList = ["157a0c3f-2085-4f56-b224-85771c3c3af1", "44259241-48cc-407c-92fb-803ee33c6d16", "d19c768a-5e41-44f7-8ed7-d05216f62770", "0cc10e7e-117c-4a43-a9fe-7b5d78c89979"];  // Important : doit être dans le même ordre que la liste des panneaux à synchroniser...
-var UseActorsSubSetList = false; // utilisation ou pas des sous-listes de la taxonomie des acteurs. ( si false le terme : actorsSetId est utilisé )
+var LISTSHAREPOINT_TITLE = "RIDA suivi de projet";
+var RIDALIST_URL = '/sites/pfe/Lists/RIDA v2/MyItems.aspx';
+var TAXONOMY_ID = "47054502770442c58d2e27173b0a6dab"; // "Collection de sites - devptf.sharepoint.com-sites-pfe dev Capgemini "
+var ACTORSSET_ID = "62bc99d5-39ae-4cae-9d6d-4e5c00c2ae30"; // "ActeurTerme" TERMSET
+var ACTORSSUBSET_ID = ["157a0c3f-2085-4f56-b224-85771c3c3af1", "44259241-48cc-407c-92fb-803ee33c6d16", "d19c768a-5e41-44f7-8ed7-d05216f62770", "0cc10e7e-117c-4a43-a9fe-7b5d78c89979"];  // Important : doit être dans le même ordre que la liste des panneaux à synchroniser...
+var USE_ACTORSSUBSETLIST = false; // utilisation ou pas des sous-listes de la taxonomie des acteurs. ( si false le terme : ACTORSSET_ID est utilisé )
 
 // Tableaux de correspondance Sharepoint / iObeya
 
-var dataToSynchronize = {
+var SHAREPOINTLIST_MATCHINGNAME = {
 	"actor" : "Acteurs",
 	"startDate" : "StartDate",
 	"dueDate" : "DueDate",
@@ -96,7 +84,7 @@ var dataToSynchronize = {
 };
 
 // Table de correspondance % achevé
-var percentageStickerMapping =  {
+var PERCENTAGE_IOBEYASTICKER_MAPPING =  {
 	"setName" : "Avancement",
 	"map" :  {
 		"0%" : {"name" : "0%"},
@@ -115,7 +103,7 @@ var percentageStickerMapping =  {
 
 // Table de correspondance Priorité :
 
-var priorityStickerMapping = {
+var PRIORITY_IOBEYASTICKER_MAPPING = {
 	"setName" : "Choices",
 	"map" :  {
 		"Haute" : {"name" : "Haute"},
@@ -123,61 +111,3 @@ var priorityStickerMapping = {
 		"Faible" : {"name" : "Faible"}
 	}
 };
-
-
-/***  
-
-	SECTION :: Paramétrage environnement SIAé
-	
-***/
-
-// *** paramètres iObeya SIAe
-
-//var iObeyaURL = "https://iobeya.siae.intradef.gouv.fr/iobeya/";  // production
-//var iObeyaURL = "https://iobeya-test.siae.intradef.gouv.fr/iobeya"; // preproduction 
-
-/*** propriétés panneau iObeya SIAé	***/
-//var BOARD_NAME = "SuiviCoproj";
-//var ROOM_NAME = "DSI";
-
-/*** Paramétrage Sharepoint dev 
-
-//var siteUrl = '/';
-//var ridaUrl = 'https://pfe-dev.siae.intradef.gouv.fr/Lists/RIDA suivi de projet/AllItems.aspx';
-//var taxonomyId = "3cac142caa9c4a6183129b7318cf69b5"; // "Collection de sites - Plateforme dev SIAé "
-//var actorsSetId = "653b17b1-bd0b-4cd0-87e0-0d29a9d1d69b"; // "ActeurTerme"
-//var actorsSubSetId = "d84a1028-570d-407a-8c56-3817301a0d9f"; // "SIAé"
-
-
-// *** tableau de correspondance Sharepoint / iObeya
-
-/*** environnement de développement SIAé ***/
-//var dataToSynchronize = {
-//	"actor" : "Acteurs",
-//	"startDate" : "StartDate",
-//	"dueDate" : "DueDate",
-//	"status" : "Statut_x0020_RIDA",
-//	"subject" : "Title",
-//	"synchroiObeya" : "Synchro_x0020_iObeya",
-//	"percentComplete" : "PercentComplete",
-//	"modificationDate" : "Modified",
-//	"creationDate" : "Created",
-//	"modifier" : "Editor",
-//	"priority" : "Priority",
-//	"creator" : "Author",
-//	"idiObeya" : "idiObeya",
-//	"synchroStatus" : "Statut_x0020_Synchro",
-//	"workload" : "Charge",
-//	"firmDeadline" : "Ech_x00e9_ance_x0020_ferme"
-//};
-
-
-/*** environnement de développement SIAé ***/
-//var priorityStickerMapping = {
-//	"setName" : "Criticality",
-//	"map" :  {
-//		"(1) Haute" : {"name" : "Critical"},
-//		"(2) Normale" : {"name" : "Minor"},
-//		"(3) Faible" : {"name" : "Trivial"},
-//	}
-//}

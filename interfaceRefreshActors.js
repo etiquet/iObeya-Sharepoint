@@ -107,22 +107,22 @@ var terms = currentTerm.get_terms();
 
 ////// fin du code copié depuis internet
 
-var actorsTermsListTable = []; // multi tableau
+var g_actorsTermsListTable = []; // multi tableau
 
 function retrieveActorsList_refresh() {
     var context, taxonomySession, termStore, parentTerm, terms, termgrp,termsfromsubgrp, termSet, termsEnumerator, currentTerm;
    
 	context = SP.ClientContext.get_current();
 	taxonomySession = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
-    termStore = taxonomySession.get_termStores().getById(taxonomyId);
+    termStore = taxonomySession.get_termStores().getById(TAXONOMY_ID);
 
-	for (var i in actorsSubSetIdList) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
-			actorsTermsListTable[i] = new Array();
+	for (var i in ACTORSSUBSET_ID) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
+			g_actorsTermsListTable[i] = new Array();
 		
-			termSet = termStore.getTermSet(actorsSetId); // termsets
+			termSet = termStore.getTermSet(ACTORSSET_ID); // termsets
 			termgrp = termSet.get_groups();
 		
-		//getTerm(actorsSubSetIdList[i]);  //load child Term(s);
+		//getTerm(ACTORSSUBSET_ID[i]);  //load child Term(s);
 
 			context.load(termgrp);
 		
@@ -134,7 +134,7 @@ function retrieveActorsList_refresh() {
 				// Récupération des acteurs
 				while (termsEnumerator.moveNext()) {
 					currentTerm = termsEnumerator.get_current();
-					actorsTermsListTable[i].push(currentTerm);
+					g_actorsTermsListTable[i].push(currentTerm);
 					}
 			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message());	}));
 	} // for (var i...)
@@ -149,7 +149,7 @@ function syncActors_refresh(iObeyaNodes) {
 		
 		for (i in l_boardid){
 			// 	Pour l'adaptation multipanneau, 2 nouvelles variable à utiliser	
-			//	actorsTermsListTable[i]
+			//	g_actorsTermsListTable[i]
 			//	g_iO_boards[g_defaultboard_index].id
 			
 			// 1) Récupération des étiquettes actuellement présente au sein du bloc "Ressources" du panneau
@@ -163,10 +163,10 @@ function syncActors_refresh(iObeyaNodes) {
 			
 			labelsToCreate = []; // objet vidé
 			
-			for (id in actorsTermsListTable[i]) {
+			for (id in g_actorsTermsListTable[i]) {
 				actorFound = false;
 				for (j in labelList) { // on analyse s'il manque un label dans la zone
-					if (actorsTermsListTable[i][id].get_name() === labelList[j].contentLabel && 
+					if (g_actorsTermsListTable[i][id].get_name() === labelList[j].contentLabel && 
 						labelList[j].boardid === g_iO_boards[i].id) { // et que le label est sur le panneau en question
 						actorFound = true;
 					}
@@ -174,7 +174,7 @@ function syncActors_refresh(iObeyaNodes) {
 				
 				if (actorFound === false) { // si oui on créé le label dans la zone
 					// Créer le label
-					ridaFormatedObject = getRidaFormatedObject(actorsTermsListTable[i][id].get_name());
+					ridaFormatedObject = getRidaFormatedObject(g_actorsTermsListTable[i][id].get_name());
 					newLabel = createActorLabel(ridaFormatedObject);
 					newLabel.boardid=g_iO_boards[i].id;
 					

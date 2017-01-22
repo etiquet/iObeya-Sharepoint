@@ -67,7 +67,9 @@ function findOverlappingElements(note, nodesiObeya){
     // Vérifier sur les elements sont bien dans le même tableau que la note
 	for (i in foundElements) {
 		if (foundElements[i].zOrder > note.zOrder && foundElements[i].boardid == note.boardid) {
-            console.log("note dans: " + note.boardname);
+            console.log("Elements dans: " + note.boardname);	
+			foundElements[i].noteid = note.id; // on y ajoute des propriétés utiles pour d'autres methodes
+			foundElements[i].notetitle = note.props.content;	 
 			overLappingElements.push(foundElements[i]);
 		}
         //console.log("Note n'est pas au-dessus!");
@@ -117,12 +119,12 @@ function isActorLabel(iObeyaObject) {
 
 /*** Retourne vrai si l'élément passé en paramètre est un sticker "% achevé" ***/
 function isPercentCompleteSticker(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(percentageStickerMapping.setName);
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(PERCENTAGE_IOBEYASTICKER_MAPPING.setName);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre est un sticker "Priorité" ***/
 function isPrioritySticker(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(priorityStickerMapping.setName);
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(PRIORITY_IOBEYASTICKER_MAPPING.setName);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre est une étiquette de "Statut" ***/
