@@ -43,7 +43,13 @@ function formateFieldToExport(field) {
 	}
 }
 
-/*** Succès de la récupération des données Sharepoint : stockage dans ridaNodes ***/
+/*** 
+	Succès de la récupération des données Sharepoint : stockage dans ridaNodes 
+	Cette fonction est une fonction "classique" de sharepoint en cas de succès
+	C'est la fonction qui récupère la liste sharepoint
+***/
+
+
 function onGetQuerySucceeded(sender, args) {
     var fields, l_ridaobj, listItemEnumerator, key;
     ridaNodes = [];
@@ -59,10 +65,27 @@ function onGetQuerySucceeded(sender, args) {
 	        l_ridaobj.idRida = fields.ID;
 	        for (key in SHAREPOINTLIST_MATCHINGNAME) { // SHAREPOINTLIST_MATCHINGNAME defined in interfaceConfig.js
 				l_ridaobj[key] = formateFieldToExport(fields[SHAREPOINTLIST_MATCHINGNAME[key]]);
-	        }
-			ridaNodes.push(l_ridaobj);
+	        	}
+			
+			// si la donnée panneau est vide on force la valeur par défaut
+			// et si le panneau précisé est en dehors des noms connu => valeur par défaut également
+
+			var found = false;
+			for (var i in BOARDSTOSYNC){
+					if( l_ridaobj.hasOwnProperty("PanneauiObeya") )
+						if(l_ridaobj.PanneauiObeya == BOARDSTOSYNC[i])
+							found = true;
+				}
+
+			if(!found){
+				l_ridaobj.PanneauiObeya=BOARDSTOSYNC[0];
+				console.log( "Panneau mal configuré dans RIDA :" +l_ridaobj.subject
+					+"*. Positionnement du panneau par défaut : " +BOARDSTOSYNC[0]  );
+				}
+			ridaNodes.push(l_ridaobj); // on ajoute l'entrée dans l'array
 	    }
-	    
+
+		
 	    // Initialisation connexion
 		if (g_syncList !== null) 
 			if (g_syncList.length > 1) 
