@@ -288,6 +288,7 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 		  		
 				} else {
 					
+
 					if ( ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase() ){ // Cas n°9 : déplacement de panneau
 						var found=false;
 						
@@ -753,7 +754,7 @@ var boardfound=0;
 							if (elmnt.name == board) {
 								console.log(" found configured nameBoard: \"" + elmnt.name);
 								g_iO_boards.push(elmnt); // on ajoute la board dans l'array
-								if ( elmnt.name === BOARDSTOSYNC[0]) // on determine quelle l'id de la board par defaut dans l'Array de configuration.
+								if ( elmnt.name === BOARDSTOSYNC[0] ) // on determine quelle l'id de la board par defaut dans l'Array de configuration.
 									g_defaultboard_index=g_iO_boards.length-1;
 								boardfound++;
 								getNodes(syncMethod, elmnt.id, elmnt.name);
@@ -783,7 +784,7 @@ var boardfound=0;
         console.log(BOARDSTOSYNC.length)
         console.log(g_defaultboard_index);
         if (boardfound != BOARDSTOSYNC.length) {
-            throw new InterfaceException("Le nombre de tableaux a synchronisé est différent du nombre de tableaux attendus");
+            throw new InterfaceException("Le nombre de tableaux à synchroniser est différent du nombre de tableaux attendus");
         }
         
         if ( g_defaultboard_index == null ) {

@@ -43,7 +43,7 @@ var TOLERANCEINTERVAL = 10000; // temps minimum pour prendre en compte une modif
 // Paramétrage iObeya
 
 var IOBEYAURL = "https://devptf.iobeya.com";		
-var BOARDSTOSYNC = ["SuiviCoProj", "SuiviBSU", "SuiviBOE", "SuiviCOT"]; // Tableaux de iObeya
+var BOARDSTOSYNC = ["SuiviCoproj", "SuiviBSU", "SuiviBOE", "SuiviCOT"]; // Tableaux de iObeya
 
 var ROOM_NAME = "CAP - SIAé";
 var DROP_ZONE = "A faire";

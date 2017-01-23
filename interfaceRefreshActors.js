@@ -23,54 +23,81 @@
  le site suivant semble proposer des méthodes pour aider ... à tester
  https://cann0nf0dder.wordpress.com/2013/04/09/accessing-taxonomy-term-store-with-jsom/
  
+	for (var i in ACTORSSUBSET_ID) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
+			g_actorsTermsListTable[i] = new Array();
+		
+			termSet = termStore.getTermSet(ACTORSSET_ID); // termsets
+			termgrp = termSet.get_groups();
+		
+		//getTerm(ACTORSSUBSET_ID[i]);  //load child Term(s);
+
+			context.load(termgrp);
+		
+			context.executeQueryAsync( 
+				Function.createDelegate(this, function (sender, args) {
+				termsfromsubgrp=termgrp.get_termSets();
+				terms=termsfromsubgrp.getAllTerms();
+				termsEnumerator = terms.getEnumerator();
+				// Récupération des acteurs
+				while (termsEnumerator.moveNext()) {
+					currentTerm = termsEnumerator.get_current();
+					g_actorsTermsListTable[i].push(currentTerm);
+					}
+			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message());	}));
+	} // for (var i...)
 */
 
-////// le code ci-dessous est une copie partielle du site mentionné ci-dessus
-////// debut du code copié depuis internet
+////// fin du code copié depuis internet
 
-var termsList = "Terms: \n"
+var g_actorsTermsListTable = [];// multi tableau
+var context, taxonomySession, termStore,termStores,termStoresEnum, parentTerm, terms, termSets;
+var termgrp,termsfromsubgrp, termSet, termsEnumerator, currentTerm;
+var termsList = "Terms: \n";
 
-function showTerms(termSetId) {
-	//We need to load and populat the matching Term Set first.
-	var termSetEnum = termSets.getEnumerator();
-	while (termSetEnum.moveNext()) {
-		var currentTermSet = termSetEnum.get_current();
-		if (currentTermSet.get_id() == termSetId) {
+function retrieveActorsList_refresh() {
 
-		//If termSet Matches, then get all terms.
-		context.load(currentTermSet);
-		context.executeQueryAsync( 
+   
+	context = SP.ClientContext.get_current();
+	taxonomySession = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
+    termStore = taxonomySession.get_termStores().getById(TAXONOMY_ID);
+	termSet= termStore.getTermSet(ACTORSSET_ID);
+	
+
+
+	context.load(termSet);
+	context.executeQueryAsync( 
 			function () {
 				//Load terms
-				var terms = currentTermSet.get_terms();
+				var terms = termSet.get_terms();
+				
 				context.load(terms);
-
 				context.executeQueryAsync(
-
 					function () {
 						var termsEnum = terms.getEnumerator();
 						while (termsEnum.moveNext()) {
 							var currentTerm = termsEnum.get_current();
+							var currentTermname = termsEnum.get_current().get_name();
 							var termName = currentTerm.get_name();
 							var termId = currentTerm.get_id();
-							termsList += termName + ": " + termId;
+							termsList += currentTermname + "::" +termName + ": " + termId;
 
 							//Check if term has child terms
 
 							if (currentTerm.get_termsCount() > 0) {
 							//Term has sub terms.
-							recursiveTerms(currentTerm, 1);
+								recursiveTerms(currentTerm, 1);
 							}
 
 							alert(termList);
 						}
 					},function () { /*failure to load terms*/ });
 		},	function () { /*failure to load current term set*/ });
+	
+	
 
-		break; 
-		}
-	}
 }
+
+
  
 function recursiveTerms(currentTerm, nestedLoop) {
 //Loop count for formatting purpose.
@@ -105,46 +132,16 @@ var terms = currentTerm.get_terms();
 		}, function () { /*failure to load terms*/ });	
 }
 
-////// fin du code copié depuis internet
 
-var g_actorsTermsListTable = []; // multi tableau
 
-function retrieveActorsList_refresh() {
-    var context, taxonomySession, termStore, parentTerm, terms, termgrp,termsfromsubgrp, termSet, termsEnumerator, currentTerm;
-   
-	context = SP.ClientContext.get_current();
-	taxonomySession = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
-    termStore = taxonomySession.get_termStores().getById(TAXONOMY_ID);
 
-	for (var i in ACTORSSUBSET_ID) { // ne prendre que les sub list défini comme liée au panneau (cf config file)
-			g_actorsTermsListTable[i] = new Array();
-		
-			termSet = termStore.getTermSet(ACTORSSET_ID); // termsets
-			termgrp = termSet.get_groups();
-		
-		//getTerm(ACTORSSUBSET_ID[i]);  //load child Term(s);
-
-			context.load(termgrp);
-		
-			context.executeQueryAsync( 
-				Function.createDelegate(this, function (sender, args) {
-				termsfromsubgrp=termgrp.get_termSets();
-				terms=termsfromsubgrp.getAllTerms();
-				termsEnumerator = terms.getEnumerator();
-				// Récupération des acteurs
-				while (termsEnumerator.moveNext()) {
-					currentTerm = termsEnumerator.get_current();
-					g_actorsTermsListTable[i].push(currentTerm);
-					}
-			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message());	}));
-	} // for (var i...)
-}
 
 /*** Action de synchronisation avec iObeya ***/
 //TODO : faire une boucle par panneau... VIVIEN ???
 
 function syncActors_refresh(iObeyaNodes) {
 	var resourceRoll, labelList, labelsToCreate, rollObject, id, actorFound, i, j, ridaFormatedObject, newLabel;
+	return;
 	try {
 		
 		for (i in l_boardid){
