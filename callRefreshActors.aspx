@@ -13,6 +13,8 @@
 	
 	<script type="text/javascript" src="../_layouts/15/init.js"></script>
 	<script type="text/javascript" src="../_layouts/15/MicrosoftAjax.js"></script>
+	
+	
 	<script type="text/javascript" src="../_layouts/15/SP.Runtime.js"></script>
 	<script type="text/javascript" src="../_layouts/15/SP.js"></script>
 	<script type="text/javascript" src="../_layouts/15/SP.Taxonomy.js"></script>
@@ -27,13 +29,14 @@
 	<script type="text/javascript" src="interfaceCRUD.js"></script>
 
 	<script type="text/javascript">
-		$(document).ready(function(){   
 		
-			// Récupération de la liste des acteurs
-			retrieveActorsList_refresh();
+		$(document).ready(function(){   
+			//on s'assure d'avoir loadé toutes les librairies nécessaires
+
+			// Récupération de la liste des acteurs ( taxonomie sharepoint)
+			// execute des queries sharepoints asysnchrones, compliqué à gérer
 			
-			// Mise à jour du bloc "Ressources"
-			checkIn(syncActors_refresh);
+			retrieveActorsList_refresh();
 
 		});
 	</script>
