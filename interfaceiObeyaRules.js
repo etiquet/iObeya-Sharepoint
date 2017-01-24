@@ -132,6 +132,13 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 		//nodesiObeya = refreshZOrders(nodesiObeya);
         lastZOrder = maxZOrder(nodesiObeya) + 1;
 	
+		
+		/* TODO: 
+			Nettoyer le code inutile // Affichage "stack"
+			pn à résoudre : les nouveaux acteurs (dans le cas de refresh actor se placent à droite de tout label trouvés, 
+			même si le label le + à droite est situé  dans le roll au dessus  (probablement pas de filtrage en Y )
+		*/
+		
 		// Type d'affichage
 		displayType = display_list ; //display_list; // Par défaut : liste
 		

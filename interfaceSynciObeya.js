@@ -402,6 +402,7 @@ function performSyncAction(nodesRida, nodesiObeya, l_syncList){
 
 					if( iObeyaObject.toreupdate != undefined ){ 
 						// TODO: écrire la fonction qui update la note iObeya depuis un objet en mémoire
+						g_nodesToUpdate.push(iObeyaObject);
 					}
 					
 		        break;
@@ -415,6 +416,7 @@ function performSyncAction(nodesRida, nodesiObeya, l_syncList){
 					// a factoriser avec celui de create rida...
 					if( iObeyaObject.toreupdate != undefined ){ 
 						// TODO: écrire la fonction qui update la note iObeya depuis un objet en mémoire
+						g_nodesToUpdate.push(iObeyaObject);
 					}
 					
 				break;

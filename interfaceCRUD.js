@@ -230,6 +230,7 @@ function createRida(iObeyaNote, nodesiObeya) {
 		clientContext.load(oListItem);
     
     	console.log("Create RIDA " + iObeyaNote.id);   
+	
 	    return true;
 	}
 	catch(e) {
@@ -321,35 +322,77 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
     
 	try {
 
+		// On traite les données liées à la charge
 		
-		if (iObeyaNote.props.responsible != null && iObeyaNote.props.responsible != "") { // champs responsible (en bas à gauche ) des notes iObeya > Rida "Resteafaire"  dans la note utilisée
-            resteafaire = parseWorkload(iObeyaNote.props.responsible);
- 
-            if (resteafaire == undefined || resteafaire == null) {
+		// champs responsible (en bas à gauche ) des notes iObeya > Rida "Resteafaire"  dans la note utilisée
+		if (iObeyaNote.props.responsible != null && iObeyaNote.props.responsible != "") { 
+
+            resteafaire = parseWorkload(iObeyaNote.props.responsible); // le reste à faire
+			
+            if (resteafaire == undefined || resteafaire == null) { // soucis ?
 				throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : Reste à faire \"" + iObeyaNote.props.responsible + "\" non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
 			   }
-
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["resteafaire"], resteafaire);            
-
-            if (iObeyaNote.props.title != null && iObeyaNote.props.title != "" ) { // champs Title (en haut ) > Charge R/H dans la note utilisée
-			     consomme = parseWorkload(iObeyaNote.props.title);
-			     if (consomme == undefined || consomme == null) {
-				    throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : Consommé \"" + iObeyaNote.props.title + "\" non non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
-			     }
-				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["consomme"],consomme);
-		    } else {
-				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["consomme"], "0"); // on place zero dans le consommé, à la prochaine itération on ne fera plus cette manip.
 				
-				// maintenant on vérifie si la charge "workload" est déjà positionnée dans le rida
-				// si ce n'est pas le cas, on positionne == consommé ( on positionne la première fois)
-				if (iObeyaNote.props.workload == null || iObeyaNote.props.workload == "" ){ // l'objet n'existe pas ou est null.
-					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["workload"], resteafaire); // on place l'estimé dans le workload s'il n'est pas déjà rempli
-				}	
-			}
-		
-		iObeyaNote.toreupdate = true ; // pour forcer la mise à jour de la note. ( les textes (J/H xxxx) apparaitront donc dans la note iObeya dans l'outil )	
-		}
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["resteafaire"], resteafaire);   // on place la valeur dans le RIDA         
+			iObeyaNote.props.responsible=resteafaire + " J/H (RAF)"; // on met à jour l'objet en mémoire avec le texte au bout
+			
+			// champs Title (en haut ) > consommé R/H dans la note utilisée
+			if (iObeyaNote.props.title != null && iObeyaNote.props.title != "" ) { 
 
+					 consomme = parseWorkload(iObeyaNote.props.title); // consommé
+
+					 if (consomme == undefined || consomme == null) { // soucis ?
+						throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : Consommé \"" + iObeyaNote.props.title + "\" non non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
+					 	}
+				
+					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["consomme"],consomme);
+					iObeyaNote.props.title=consomme+ " J/H (Consom.)"; // on met à jour l'objet en mémoire avec le texte au bout
+
+				} else {
+					/* 
+						si consommé est null(vide) + raf non nul 
+							> typiquement le cas si l'on rentre juste le RAF à l'initialisation de la tâche
+						on place zero dans le consommé (à la prochaine itération l'algo ne fera plus cette manip.)
+						et on force l'écriture du RAF dans le workload du RIDA.
+					*/
+					
+					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["consomme"], "0"); 
+					iObeyaNote.props.title="0 J/H (Consom.)" ; // on met à jour l'objet en mémoire avec le texte au bout
+
+					// Maintenant on vérifie si la charge "workload" dans l'objet iObeay en mémoire
+					// "workload" n'est pas un attribut d'iObeya, il est donc vide par défaut
+					// s'il est positionné c'est que l'object a été créé pour 
+					// une synchro RIDA > iObeya
+					// si vide ou null on en déduit que l'on peut positionner le "workload" dans le RIDA
+
+					if (iObeyaNote.props.workload == null || iObeyaNote.props.workload == "" ){  // worload vide ?
+						// on place l'estimé dans le workload s'il n'est pas déjà rempli
+						oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["workload"], resteafaire); 
+					}	
+			}
+			
+			// pour forcer la mise à jour de la note. ( les textes (J/H xxxx) apparaitront donc dans la note iObeya dans l'outil )	
+			iObeyaNote.toreupdate = true ; 
+			
+		} else {
+			// si ici l'utilisateur essaye de saisir un consommé / sans raf, on le laisse faire.
+			// champs Title (en haut ) > consommé R/H dans la note utilisée
+			
+			     if (iObeyaNote.props.title != null && iObeyaNote.props.title != "" ) { 
+					 consomme = parseWorkload(iObeyaNote.props.title);
+					 if (consomme == undefined || consomme == null) {
+						throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : Consommé \"" + iObeyaNote.props.title + "\" non non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
+					 	}
+					 
+					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["consomme"],consomme);
+					iObeyaNote.props.title=consomme+ " J/H (Consom.)"; // on met à jour l'objet en mémoire avec le texte au bout
+
+					// pour forcer la mise à jour de la note. ( les textes (J/H xxxx) apparaitront donc dans la note iObeya dans l'outil )	
+					iObeyaNote.toreupdate = true ;
+				 }	
+			}
+			
+			
 		// Date d'échéance
 		if (iObeyaNote.props.date != null && iObeyaNote.props.date != "") { // champs date (en bas à droite ) > Rida_due_Date  dans la note utilisée
 			dueDate = new Date(reverseDate(iObeyaNote.props.date));
@@ -382,6 +425,13 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
 		// Synchronisé avec iObeya : Oui
 		oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroiObeya"], true);
 
+		
+		
+		
+		
+		
+		
+		
 		return oListItem;
 	}
 	catch(e) {
