@@ -102,7 +102,8 @@ var g_defaultboard_index = null;  // l'iO_boardsIndex par défaut est calculé l
 
 var iO_clientId = null;
 var iO_cookie = null;
-var iO_nodes = [];
+var iO_nodes = []; // l'array iObeya
+var stackNotes = [];
 
 /**
  * Synchronisation
@@ -124,8 +125,8 @@ function startSync() { // fonction appelée depuis le bouton iObeya
 			clientContext  = new SP.ClientContext.get_current(); // le contexte ne peut être récupéré que si le script sp.js est loadé.
 			//clientContext  = new SP.ClientContext(SITEURL); // méthode alternative
 			oList = clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
-			ridaNodes = retrieveListItems();
-			retrieveActorsList_sync();
+			ridaNodes = retrieveListItems(); //checkIn(syncNotes) en call back
+			retrieveActorsList_sync(); 
 		}, "sp.js");
 	}
 	catch (e) {
@@ -1529,6 +1530,23 @@ function getBoardidFromRidaObj(ridaObj){
 	console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.subject +" est vide, utilisation du panneau par défaut : " + g_iO_boards[g_defaultboard_index].name);
 	return g_iO_boards[g_defaultboard_index].id;  // valeur par défaut.
 }
+
+function getBoardidFromName(name){
+	
+     if (name != null) 	
+			for (i in g_iO_boards) { // on scanne la liste globale de node board
+				if ( g_iO_boards[i].name.toLowerCase() == name.toLowerCase())
+					return g_iO_boards[i].id;
+            }
+	
+	// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
+	// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)			
+	console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.subject +" est vide, utilisation du panneau par défaut : " + g_iO_boards[g_defaultboard_index].name);
+	return g_iO_boards[g_defaultboard_index].id;  // valeur par défaut.
+}
+
+
+
 
 
 function getBoardNameFromRidaObj(ridaObj){

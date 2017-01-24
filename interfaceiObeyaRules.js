@@ -133,7 +133,7 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
         lastZOrder = maxZOrder(nodesiObeya) + 1;
 	
 		// Type d'affichage
-		displayType = display_list; // Par défaut : liste
+		displayType = display_list ; //display_list; // Par défaut : liste
 		
 		for (i in stackNotes) {
 			if (stackNotes[i].toUpperCase() === status.toUpperCase()) {
@@ -156,6 +156,7 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 		var realHeight = size.realHeight;
 
 		// Affichage "liste"
+		
     	if (displayType === display_list) {
     		var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
 	    	while (elementsInRectangle.length > 0 && Y + realHeight < limit.Y) {
@@ -177,7 +178,8 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	    		elementsInRectangle = findElementsInRectangle(X, Y, X+realWidth, Y+realHeight, nodesiObeya);
 		    }
     	}
-
+		
+		
 		// Affichage "stack"
 		if (displayType == display_stack) {
 		    while (findNoteAtPosition(X, Y, nodesiObeya) != -1 && Y < limit.Y) {
@@ -198,7 +200,7 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	    		}
 	    	}
 	    }
-	    
+		
 	    if (Y+realHeight >= limit.Y) {
 	    	// Erreur
 	    	throw new InterfaceException("Il n'y a plus de place disponible pour afficher un élément au statut \"" + status + "\".");
