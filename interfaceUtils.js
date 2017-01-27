@@ -38,6 +38,119 @@ function parseNoteText(str) {
 	return str;
 }
 
+/*** 
+	Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur 
+	retourne -1 si la date n'est pas bien formatée
+
+***/
+
+function parseDate(date) {
+	var l_date, sep, str = date, defyear, defmonth, defday,day,month,year;
+
+	// On calcule l'année par défaut
+	defyear= Date.now();
+	
+	// on détermine le séparateur
+	sep =str.indexOf("/");
+	
+	if (sep > 0) {
+		l_date=str.split("/"); // décomposition
+		} else 	{
+			sep =str.indexOf("-");
+			if (sep > 0) {
+					l_date=str.split("-"); // décomposition
+				} else {	
+					sep =str.indexOf(" ");
+						if (sep > 0) {
+							l_date=str.split(" "); // décomposition
+						} else 
+							// on test si 6 ou 8 chiffre qui se suivent
+							var reg=/[0-9]+/g;
+							var date = reg.exec(date).toString();
+								if (date.length ==8 ){
+									var day=parseInt(date.substr(0,2));
+									var month=parseInt(date.substr(2,2));
+									if (month>12) month=12;
+									if (month<1) month=1;
+									if (day>31) day=31;
+									if (day<1) day=1;
+									var year=parseInt(date.substr(4,4));
+									return day.toString() +"/" + month.toString() +"/" + year.toString();
+
+								} else if (date.length ==6 ){
+										var day=parseInt(date.substr(0,2));
+										var month=parseInt(date.substr(2,2));
+										if (month>12) month=12;
+										if (month<1) month=1;
+										if (day>31) day=31;
+										if (day<1) day=1;
+										var year=parseInt(date.substr(4,2));
+										var y2= new Date;
+										y2= parseInt(y2.getFullYear());
+										year= Math.round(y2/100)*100+year;  // on prend centaibe  courante
+										return day.toString() +"/" + month.toString() +"/" + year.toString();
+									}
+
+						return -1; // erreur sur le format; 
+					}
+		}
+	
+	// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
+		//.getFullYear()
+
+	switch(l_date.length){
+		
+		case 3:
+			var day=parseInt(l_date[0]);
+			var month=parseInt(l_date[1]);
+			if (month>12) month=12;
+			if (month<1) month=1;
+			if (day>31) day=31;
+			if (day<1) day=1;
+			day=day.toString();
+			month=month.toString();
+
+			if (day.length <2) day= "0"+day.toString();
+
+			if (month.length <2) month= "0"+month;
+			var year=parseInt(l_date[2]);
+			if (year < 100){
+
+				var y2= new Date;
+				y2= parseInt(y2.getFullYear());
+				year= Math.round(y2/100)*100+year;  // on prend centaibe  courante
+
+				}
+
+			return day +"/" + month +"/" + year.toString();
+        break;
+			
+		case 2:
+			var day=parseInt(l_date[0]);
+			var month=parseInt(l_date[1]);
+			if (month>12) month=12;
+			if (month<1) month=1;
+			if (day>31) day=31;
+			if (day<1) day=1;
+			day=day.toString();
+			month=month.toString();
+
+			if (day.length <2) day= "0"+day.toString();
+			if (month.length <2) month= "0"+month
+			
+			var y2= new Date;
+			var year=y2.getFullYear();
+			return day +"/" + month +"/" + year.toString();
+
+        break;		
+		
+		default: // pas une bonne date
+			return -1; // erreur sur le format.
+        break;	
+
+	}
+	
+}
 /*** Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur ***/
 function reverseDate(date) {
 
@@ -49,8 +162,8 @@ function reverseDate(date) {
 	} else {
 		return match[2] + "/" + match[1] + "/" + match[3];
 	}
-}
 
+}
 /*** Formatage de la charge (valeur attendue : "DECIMAL STRING") ***/
 function parseWorkload(workload) {
 	var regex = /^([0-9]+(,[0-9]+)?)/, match = workload.match(regex);

@@ -318,7 +318,7 @@ function leaveSynchroRida(ridaId) { console.log("ICI" + ridaId);
 // notamment, cela permet de faire une post mise à jour de la note iObeya dans l'outil si le flag  suivant est positionné >> iObeyaNote.toreupdate = true
 
 function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
-    var resteafaire, consomme = null, dueDate, statusObject;
+    var resteafaire=null, consomme = null, dueDate, statusObject;
     
 	try {
 
@@ -330,7 +330,9 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
             resteafaire = parseWorkload(iObeyaNote.props.responsible); // le reste à faire
 			
             if (resteafaire == undefined || resteafaire == null) { // soucis ?
+				
 				throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : Reste à faire \"" + iObeyaNote.props.responsible + "\" non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
+				
 			   }
 				
             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["resteafaire"], resteafaire);   // on place la valeur dans le RIDA         
@@ -395,11 +397,16 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
 			
 		// Date d'échéance
 		if (iObeyaNote.props.date != null && iObeyaNote.props.date != "") { // champs date (en bas à droite ) > Rida_due_Date  dans la note utilisée
-			dueDate = new Date(reverseDate(iObeyaNote.props.date));
-			if (dueDate == undefined || dueDate.getTime() == 0) {
-				throw new InterfaceException("Post-it \"" + iObeyaNote.props.content + "\" : date d'échéance \"" + iObeyaNote.props.date + "\" non reconnue, veuillez corriger la saisie et relancer la synchronisation.");
-			}
-			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["dueDate"], dueDate);
+			dueDate = parseDate(iObeyaNote.props.date);
+			if (dueDate.length){
+				var dueDatedate = new Date(reverseDate(dueDate));
+				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["dueDate"], dueDatedate);
+			} else {
+				dueDate="jj/mm/aaaa"; // erreur sur le format.
+				g_syncErrors++;
+				}
+			iObeyaNote.props.date=dueDate;
+			iObeyaNote.toreupdate = true ;
 		}
 		
 		// Sujet de la tâche
@@ -424,13 +431,6 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
 		
 		// Synchronisé avec iObeya : Oui
 		oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroiObeya"], true);
-
-		
-		
-		
-		
-		
-		
 		
 		return oListItem;
 	}
@@ -439,68 +439,6 @@ function getNoteProperties( oListItem, iObeyaNote, nodesiObeya) {
 	}
 }
 
-
-/*** Récupère les propriétés intrinsèques au post-it pour la mise à jour RIDA ***/
-/* version pour iObeya 3.1
-function getNoteProperties(ridaItem, iObeyaNote, nodesiObeya) {
-	try {
-		// Instance / Date de début
-		if (iObeyaNote.label1 != null && iObeyaNote.label1 != "") {
-			var startDate = new Date(reverseDate(iObeyaNote.label1));
-			if (startDate === undefined || startDate.getTime() == 0) {
-				throw new InterfaceException("Post-it \""+iObeyaNote.contentLabel+"\" : date de début \"" + iObeyaNote.label1 + "\" non reconnue.");
-			}
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["startDate"], startDate);
-		}
-
-		// Date d'échéance
-		if (iObeyaNote.label2 != null && iObeyaNote.label2 != "") {
-			var dueDate = new Date(reverseDate(iObeyaNote.label2));
-			if (dueDate === undefined || dueDate.getTime() == 0) {
-				throw new InterfaceException("Post-it \""+iObeyaNote.contentLabel+"\" : date d'échéance \"" + iObeyaNote.label2 + "\" non reconnue.");
-			}
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["dueDate"], dueDate);
-		}
-		
-		// Charge
-		if (iObeyaNote.label0 != null && iObeyaNote.label0 != "" && iObeyaNote.label0) {
-			var workload = parseWorkload(iObeyaNote.label0);
-			if (workload === undefined || workload == null) {
-				throw new InterfaceException("Post-it \""+iObeyaNote.contentLabel+"\" : charge \"" + iObeyaNote.label0 + "\" non reconnue.");
-			}
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["workload"], workload);
-		}
-
-		// Sujet
-		if (iObeyaNote.contentLabel != null) {
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["subject"], iObeyaNote.contentLabel);
-		}
-
-		// Statut
-		var statusObject = findNoteStatus(iObeyaNote, nodesiObeya);
-		ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["status"], statusObject.status);
-		
-		// Echéance ferme
-		if (iObeyaNote.color == NOTE_WARNING_COLOR) {
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], true);
-		}
-		else {
-			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
-		}
-
-		// ID iObeya
-		ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["idiObeya"], iObeyaNote.id);
-		
-		// Synchronisé avec iObeya : Oui
-		ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroiObeya"], true);
-
-		return ridaItem;
-	}
-	catch(e) {
-		throw e;
-	}
-}
-*/
 
 
 /*** Récupère les propriétés intrinsèques à l'étiquette "Acteur" pour la mise à jour RIDA ***/
@@ -511,7 +449,6 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
 	
     try {
 
-		
 		if( !verifieActorsList_sync() ) // on check si la liste des acteurs n'est pas vide... demande son avis à l'utilisateur / retry
 				return ridaItem; // on ne traite pas sinon on risque de vider les acteurs
 		
