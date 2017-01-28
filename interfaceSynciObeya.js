@@ -105,6 +105,7 @@ var iO_cookie = null;
 var iO_nodes = []; // l'array iObeya
 var stackNotes = [];
 
+var sp_originurl  ; // origine sharepoint
 /**
  * Synchronisation
  */
@@ -124,6 +125,7 @@ function startSync() { // fonction appelée depuis le bouton iObeya
 		ExecuteOrDelayUntilScriptLoaded(function () {
 			clientContext  = new SP.ClientContext.get_current(); // le contexte ne peut être récupéré que si le script sp.js est loadé.
 			//clientContext  = new SP.ClientContext(SITEURL); // méthode alternative
+			
 			oList = clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
 			ridaNodes = retrieveListItems(); //checkIn(syncNotes) en call back
 			retrieveActorsList_sync(); 
@@ -270,7 +272,7 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 			Parcours de l'array iObeya en mémoire
 			Traitement des éléments iObeya qui diffèrent
 			2 cas sont seulements traités : 
-				- création d'une entrée RIDA
+				- création d'une entrée RIDAv
 				- déplacement d'une note dans un autre tableau ( possibilité nouvelle en multipanneau )
 				- le cas ou on bouge un post-it sur les panneaux (ex: via la création / suppresssion ou bien via la zone d'échange ) est traité naturellement.
 		*/
@@ -1238,8 +1240,6 @@ function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj){
         
         
         /* New Method for version 3.3 for iObeya*/
-        // TODO : nous avons garder la compatibilité 3.1 en mettant à "" les anciens labels des notes.
-        // auparavant v3.1 :>> note.label1 = new Date(ridaObj.startDate).format(dateFormat); 
         
 		var contentLabel = "", label0 = "", label1 = "", label2 = "", label3 = "";
 		
@@ -1252,7 +1252,7 @@ function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj){
 		if (ridaObj.workload != null)
             label2 = ridaObj.workload.toString().replace(".", ",") + " J/H (Estim)";
 	    if (ridaObj.dueDate != null)
-	        label3 = new Date(ridaObj.dueDate).format(dateFormat);
+	        label3 = new Date(ridaObj.dueDate).format(DATE_FORMAT);
         if (ridaObj.modifier != null)
 		    note.modifier = ridaObj.modifier;
         
