@@ -40,7 +40,9 @@ var TOLERANCEINTERVAL = 10000; // temps minimum pour prendre en compte une modif
 
 // Paramétrage iObeya
 
-var IOBEYAURL = "https://devptf.iobeya.com";		
+var IOBEYAURL = "https://devptf.iobeya.com";	//ptf @cap en 3.3
+//var IOBEYAURL = "https://dev-services-34.iobeya.com"; //ptf @tezst en 3.4
+
 var BOARDSTOSYNC = ["SuiviCoproj", "SuiviBSU", "SuiviBOE", "SuiviCOT"]; // Tableaux de iObeya
 
 var ROOM_NAME = "CAP - SIAé";
@@ -49,7 +51,7 @@ var RESOURCES_ZONE = "Ressources";
 var DELETED_STATUS = "Supprimé";
 
 // Paramétrage Sharepoint
-
+var SHAREPOINT_ORIGIN ="https://devptf.sharepoint.com/" ; // pour le utilisation du CORS Access-Control-Allow-Origin
 var LISTSHAREPOINT_TITLE = "RIDA suivi de projet";
 var RIDALIST_URL = '/sites/pfe/Lists/RIDA v2/MyItems.aspx';
 var TAXONOMY_ID = "47054502770442c58d2e27173b0a6dab"; // "Collection de sites - devptf.sharepoint.com-sites-pfe dev Capgemini "

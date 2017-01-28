@@ -2,6 +2,7 @@ var requestQueue = [];
 var state_queue_processing = 1;
 var state_queue_waiting = 0;
 
+
 /**
  * Gestion des exceptions de l'interface Sharepoint/iObeya
  */
@@ -49,25 +50,33 @@ function parseDate(date) {
 
 	// On calcule l'année par défaut
 	defyear= Date.now();
-	
-	// on détermine le séparateur
+
+	// on verifie que l'on a une pattern de date
+	// JJMMAA JJMMAAAA JJ/MM/AA JJ/MM/AAAA JJ MM AA JJ MM AAAA JJ-MM-AA JJ-MM-AAAA    
+	if (! /\d{2}[\/]\d{2}[\/]\d{2,4}/.test(date) )
+			if (! /\d{2}[\ ]\d{2}[\ ]\d{2,4}/.test(date) ) 
+				if (! /\d{2}[\-]\d{2}[\-]\d{2,4}/.test(date) )
+					if (! /\d{6,8}/.test(date) )
+						return -1; // erreur sur le format; 
+
 	sep =str.indexOf("/");
-	
 	if (sep > 0) {
 		l_date=str.split("/"); // décomposition
 		} else 	{
 			sep =str.indexOf("-");
 			if (sep > 0) {
 					l_date=str.split("-"); // décomposition
-				} else {	
-					sep =str.indexOf(" ");
+				} else {
+						sep =str.indexOf(" ");
 						if (sep > 0) {
 							l_date=str.split(" "); // décomposition
-						} else 
+						
+						} else {
 							// on test si 6 ou 8 chiffre qui se suivent
-							var reg=/[0-9]+/g;
+							var reg=/[0-9]+/g; // on ne garde que les chiffres
 							var date = reg.exec(date).toString();
-								if (date.length ==8 ){
+							
+							if (date.length ==8 ){
 									var day=parseInt(date.substr(0,2));
 									var month=parseInt(date.substr(2,2));
 									if (month>12) month=12;
@@ -75,6 +84,7 @@ function parseDate(date) {
 									if (day>31) day=31;
 									if (day<1) day=1;
 									var year=parseInt(date.substr(4,4));
+									
 									return day.toString() +"/" + month.toString() +"/" + year.toString();
 
 								} else if (date.length ==6 ){
@@ -88,12 +98,70 @@ function parseDate(date) {
 										var y2= new Date;
 										y2= parseInt(y2.getFullYear());
 										year= Math.round(y2/100)*100+year;  // on prend centaibe  courante
+										
 										return day.toString() +"/" + month.toString() +"/" + year.toString();
 									}
+						// else
 
 						return -1; // erreur sur le format; 
 					}
-		}
+				}
+		} 
+	
+	// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
+		//.getFullYear()
+
+	switch(l_date.length){
+		
+		case 3:
+			var day=parseInt(l_date[0]);
+			var month=parseInt(l_date[1]);
+			if (month>12) month=12;
+			if (month<1) month=1;
+			if (day>31) day=31;
+			if (day<1) day=1;
+			day=day.toString();
+			month=month.toString();
+
+			if (day.length <2) day= "0"+day.toString();
+
+			if (month.length <2) month= "0"+month;
+			var year=parseInt(l_date[2]);
+			if (year < 100){
+
+				var y2= new Date;
+				y2= parseInt(y2.getFullYear());
+				year= Math.round(y2/100)*100+year;  // on prend centaibe  courante
+
+				}
+
+			return day +"/" + month +"/" + year.toString();
+        break;
+			
+		case 2:
+			var day=parseInt(l_date[0]);
+			var month=parseInt(l_date[1]);
+			if (month>12) month=12;
+			if (month<1) month=1;
+			if (day>31) day=31;
+			if (day<1) day=1;
+			day=day.toString();
+			month=month.toString();
+
+			if (day.length <2) day= "0"+day.toString();
+			if (month.length <2) month= "0"+month
+			
+			var y2= new Date;
+			var year=y2.getFullYear();
+			return day +"/" + month +"/" + year.toString();
+
+        break;		
+		
+		default: // pas une bonne date
+			return -1; // erreur sur le format.
+        break;	
+
+	}
 	
 	// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
 		//.getFullYear()
@@ -151,6 +219,9 @@ function parseDate(date) {
 	}
 	
 }
+
+
+
 /*** Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur ***/
 function reverseDate(date) {
 
@@ -165,13 +236,13 @@ function reverseDate(date) {
 
 }
 /*** Formatage de la charge (valeur attendue : "DECIMAL STRING") ***/
-function parseWorkload(workload) {
+function filterNumbers(workload) { // ne garde que les digits et ,
 	var regex = /^([0-9]+(,[0-9]+)?)/, match = workload.match(regex);
 
 	if (match == null || match == undefined) {
 		return match;
 	} else {
-		return match[0].replace(",", ".");
+		return match[0].replace(",", "."); // convertit , en . (décimal sharepoint)
 	}
 
 }
