@@ -4,7 +4,7 @@
 	
 ***/
 
-var dateFormat = 'dd/MM/yyyy';
+var DATE_FORMAT = 'dd/MM/yyyy';
 
 var NOTE_DEFAULT_COLOR = 16772735;
 var NOTE_WARNING_COLOR = 16488575;
