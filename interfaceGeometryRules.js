@@ -32,12 +32,12 @@ var result = false;
 }
 
 /*** Vérifie si des noeuds vérifiant la condition donnée chevauche le rectangle (x1, y1, x2, y2) ***/
-function findNodesInRectangle(x1, y1, x2, y2, nodesiObeya, conditionMethod) {
+function findNodesInRectangle(x1, y1, x2, y2, nodesiObeya, conditionTestFunction) {
 var result = Array();
 	
 	for (var id in nodesiObeya){
 		var iObeyaObject = nodesiObeya[id];
-		if (conditionMethod(iObeyaObject)) {
+		if (conditionTestFunction(iObeyaObject)) { // on utilise la fonction qui est passé en paramètre pour tester la nature de l'objet
 			var chk = isRectanglesIntersectionNotNull(x1, y1, x2, y2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x+iObeyaObject.width, iObeyaObject.y+iObeyaObject.height);
 			if (chk) {
 				result.push(iObeyaObject);
@@ -66,13 +66,27 @@ function findOverlappingElements(note, nodesiObeya){
 	// Ne conserver que les éléments situés "au-dessus" du post-it
     // Vérifier sur les elements sont bien dans le même tableau que la note
 	for (i in foundElements) {
-		if (foundElements[i].zOrder > note.zOrder && foundElements[i].boardid == note.boardid) {
-            console.log("Elements dans: " + note.boardname);	
+		if (foundElements[i].boardid == note.boardid && isNotRoll (foundElements[i]) ) {
+			
+			/*if (foundElements[i].zOrder <= note.zOrder ) {
+				console.log("le Node: " 
+							+ foundElements[i].setName 
+							+ "( id: " 
+							+ foundElements[i].id
+							+ " ) \n a un zorder :" 
+							+ foundElements[i].zOrder 
+							+ " et la note " + note.zOrder);	
+			}*/
+			
+            console.log("board: " + note.boardname 
+						+ " note: " + note.notetitle 
+						+ " node type: " + foundElements[i]['@class']
+						+ " node name: " + foundElements[i].setName
+					   );	
 			foundElements[i].noteid = note.id; // on y ajoute des propriétés utiles pour d'autres methodes
 			foundElements[i].notetitle = note.props.content;	 
 			overLappingElements.push(foundElements[i]);
 		}
-        //console.log("Note n'est pas au-dessus!");
 	}
 	
 	return overLappingElements;

@@ -13,13 +13,6 @@ function InterfaceException(message) {
     this.name = "InterfaceException";
 }
 
-/*** Affichage d'une exception ***/
-function displayException(e) {
-	alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-	console.log(e.message);
-}
-
-
 /**
  * Formatage de données
  */
@@ -207,11 +200,13 @@ function filterNumbers(workload) { // ne garde que les digits et ,
 
 /*** Erreur d'une requête Sharepoint asynchrone ***/
 function onQueryFailed(sender, args) {
-	displayException(new InterfaceException('Request failed. ' + args.get_message() + '\n' + args.get_stackTrace()));
-	
+	var msg = 'Request failed. ' + args.get_message() + '\n' + args.get_stackTrace();
+	alert(msg);
+	console.log(msg);
 	// Réactivation du bouton
 	enableButton();
     lockSync = false;
+	window.location.reload() ; // rafraichi la page après l'erreur
 }
 
 
@@ -271,4 +266,57 @@ var l_xmlr = null;
 	//x.send(payload); // pour debug, commenter la ligne au dessus
 	
 	return l_xmlr;
+}
+
+/**
+ * À partir de l'identifiant 'syncID', crée les variables globales définies dans SYNC_PROPERTIES_MAP
+ * @param syncID String: jeu de paramètres de SYNC_PROPERTIES_MAP.
+ * Si omis ou invalide, est mis à la valeur 'default'
+ * @throws InterfaceException: Le jeu de propriétés 'syncID' n'existe pas
+ */
+function loadSyncConf(syncID) {
+
+	if(! SYNC_PROPERTIES_MAP.hasOwnProperty(syncID)) {
+		throw new InterfaceException("Le jeu de propriétés '"+syncID+"' n'existe pas");
+	}
+
+	try {
+		var syncMap = SYNC_PROPERTIES_MAP[syncID];
+
+		// On charge d'abord les propriétés héritées
+		if(syncMap.hasOwnProperty('inherits') && syncMap.inherits) {
+			loadSyncConf(syncMap.inherits); // Du récursif, pas de soucis car peu de profondeur
+		}
+
+		// On a un objet sans parent : report des propriétés trouvées dans des variables globales de même nom
+		var underscoresCapitals = /^[A-Z_]*$/; // On n'authorise que les majuscules et les underscores
+		for(var property in syncMap) {
+			if(! syncMap.hasOwnProperty(property) // Lève un warning d'inspection de code...
+				|| ! property.match(underscoresCapitals) )
+				continue;
+
+			if(syncMap[property].constructor === Object) {
+				// Si la variable globale 'property' n'existe pas, on la crée
+				// > window[x] = 12; équivaut à > x = 12; avec x variable globale
+				if(!window.hasOwnProperty(property)){
+					window[property] = {};
+				}
+				for(var i in syncMap[property]) {
+					if(! syncMap[property].hasOwnProperty(i)) continue; // Lève un warning d'inspection de code...
+					// > window[property][i] équivaut (par ex.) à SHAREPOINTLIST_MATCHINGNAME['actor']
+					window[property][i] = syncMap[property][i];
+					// Exemple d'effet réel de la ligne ci-dessus :
+					//SHAREPOINTLIST_MATCHINGNAME = SYNC_PROPERTIES_MAP[syncID]['SHAREPOINTLIST_MATCHINGNAME'];
+				}
+			}
+			else if(syncMap[property].constructor === String
+					|| syncMap[property].constructor === Array) {
+				window[property] = syncMap[property];
+			}
+		}
+	} catch(e) {
+		throw e;
+	}
+	// On a fait le mapping des propriétés trouvées.
+	// Si on est dans un appel récursif, la continuité de la fonction appelante va écraser/créer des propriétés
 }

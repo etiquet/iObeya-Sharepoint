@@ -1,15 +1,14 @@
 /*** Récupère les données Sharepoint ***/
 
 function retrieveListItems() {
-    var /*clientContext,*/ ridaNodes = [], oList, camlQuery;    
+    var  ridaNodes = [], oList, camlQuery;    
 	try {
-        //clientContext = new SP.ClientContext(SITEURL); // note : SITEURL define in interface config / SP define in sharepoint included JS
-	    oList = clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE); // note : LISTSHAREPOINT_TITLE define in interface config
+	    oList = g_clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE); // note : LISTSHAREPOINT_TITLE define in interface config
 	    camlQuery = new SP.CamlQuery();
 	    camlQuery.set_viewXml("<View />");
 	    this.collListItem = oList.getItems(camlQuery);
-	    clientContext.load(collListItem);
-	    clientContext.executeQueryAsync(Function.createDelegate(this, this.onGetQuerySucceeded), Function.createDelegate(this, this.onQueryFailed));
+	    g_clientContext.load(collListItem);
+	    g_clientContext.executeQueryAsync(Function.createDelegate(this, this.onGetQuerySucceeded), Function.createDelegate(this, this.onQueryFailed));
 	    return ridaNodes;
 	} catch (e) {
 		throw new InterfaceException("Les données \"" + LISTSHAREPOINT_TITLE + "\" n'ont pas pu être trouvées dans Sharepoint");
@@ -19,27 +18,46 @@ function retrieveListItems() {
 /*** Récupère un champ RIDA et le convertit pour import dans iObeya ***/
 function formateFieldToExport(field) {
 	try {
-		// 1er cas : Date
-		if (field instanceof Date) {
+	
+		if (field instanceof Date) { 	// type date
 			return field.getTime();
 		}
 		
-        // 2e cas : Object (acteur, responsable...)
-		if (field instanceof Object) {
-			try {
-				field.get_lookupValue().length;
-				// Cas 2.1 : utilisateur
-				return field.get_lookupValue();
-			} catch (e) {
-				// Cas 2.2 : banque de termes
-				return field.get_label();
+		var data;
+		
+		if (field instanceof Array ) { 	//  type champs multivalué
+			for (arr in field ) {
+				if (field[arr] instanceof SP.FieldLookupValue ) { // cas acteur utilisant une liste
+						data = field[arr].get_lookupValue();
+						return data; // TODO / NOTE : pour l'instant on ne gère que la première valeur du champs.
+				}
+				if (field[arr] instanceof SP.Taxonomy.TaxonomyFieldValue) { // cas acteur utilisant un array de taxonomie
+						data = field[arr].get_label();
+						return data; // TODO / NOTE : pour l'instant on ne gère que la première valeur du champs.
+				}
 			}
+			return "";
+		}
+
+		if (field instanceof SP.FieldLookupValue) { // ex: Champs acteurs simple liste liée
+			return field.get_lookupValue();
 		}
 	
-		// Sinon, c'est une chaîne de caractères
-		return field;
+		if (field instanceof SP.Taxonomy.TaxonomyFieldValue) { // ex Champs simple acteur taxonomie
+			return field.get_label();
+		}
+		
+		if (field instanceof Object ) { 	//  type de donnée non traitée
+			return "/!\\type non traite";
+		}
+
+		var debug=true; // pour faire un beakpoint		
+		return field; // par defaut on transmet la valeur (on garde le type d'objet fourni)
+			
 	} catch (e) {
-		displayException(new InterfaceException("Erreur lors du formatage du champ " + field + "."));
+		var msg = "Erreur lors du formatage du champ " + field + ".";
+		alert(msg);
+		console.log(msg);
 	}
 }
 
@@ -48,7 +66,6 @@ function formateFieldToExport(field) {
 	Cette fonction est une fonction "classique" de sharepoint en cas de succès
 	C'est la fonction qui récupère la liste sharepoint
 ***/
-
 
 function onGetQuerySucceeded(sender, args) {
     var fields, l_ridaobj, listItemEnumerator, key;
@@ -93,15 +110,13 @@ function onGetQuerySucceeded(sender, args) {
             else checkIn(syncNotes); // Appel de la fonction principale de synchronisation ICI
 
 	} catch (e) {
-		displayException(
-				new InterfaceException(
-									"Une erreur est survenue à la lecture de la liste sharepoint : " + e.message
-								  	+ "possiblement une des propriétés de la liste \"SHAREPOINTLIST_MATCHINGNAME\" n'a pas été trouvée parmi les colonnes de la table RIDA. vérifier à tout hasard le fichier de configuration \n "
-								  )
-				);
-					enableButton();// Réactivation du bouton
-        			lockSync=false;
-					window.location.reload() ; // rafraichi la page après l'erreur
+		var msg ="Une erreur est survenue à la lecture de la liste sharepoint : " + e.message
+								  	+ "possiblement une des propriétés de la liste \"SHAREPOINTLIST_MATCHINGNAME\" n'a pas été trouvée parmi les colonnes de la table RIDA. vérifier à tout hasard le fichier de configuration \n ";
+		alert(msg);
+		console.log(msg);
+		enableButton();// Réactivation du bouton
+        lockSync=false;
+		window.location.reload() ; // rafraichi la page après l'erreur
 	}
 }
 
