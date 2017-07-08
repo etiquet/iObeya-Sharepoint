@@ -6,6 +6,7 @@ Evolution significative: multihomming des paramètres.
 Log des modifications de l’interface iObeya Sharepoint
 
 - Toutes les fonctions XTMLREQUEST sont asynchrones
+- peut gérer la liste d'acteur soit dans une taxonomie soit (nouveau) dans une liste secondaire.
 - le code a été refactorisé pour permettre un déboggage plus facile (suppression de la function displayexception qui masquait le throw d’erreur )
 - le code est « mutihoming », permet de gérer plusieurs instance.  ( nécessite un timer asysnchrone)
     - Ca fenêtre sharepoint sert de lookup du paramètre à charger
