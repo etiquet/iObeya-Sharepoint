@@ -79,7 +79,7 @@ var display_stack = 1;
 
 /*** Variables globales du script ***/
 
-var clientContext; //= new SP.ClientContext(SITEURL);
+var g_clientContext; //= new SP.ClientContext(SITEURL);
 var oList;
 var ridaNodes = [];
 var g_syncList = [];
@@ -91,7 +91,7 @@ var g_nodesToCreate = [];
 var g_nodesToUpdate = [];
 var g_nodesToTrash = [];
 var g_rollsToRefresh = [];
-
+var g_syncID ;
 var g_syncErrors = 0;
 var g_actorsTermsList = [];
 
@@ -111,34 +111,59 @@ var sp_originurl  ; // origine sharepoint
  */
 
 /*** Initialisation de synchronisation avec iObeya ***/
-function startSync() { // fonction appelée depuis le bouton iObeya
+function startSync(syncID) { // fonction appelée depuis le bouton iObeya
 	try {
-		if (lockSync == true) 
+		if(!syncID){
+			console.log("Pas de jeu de paramètres donné, on prend la valeur par défaut");
+		 	// on recherche la liste selon le titre de la page 
+
+			var wname = window.document.title ;
+			for (entry in SYNC_PROPERTIES_MAP){
+				if (wname.includes(SYNC_PROPERTIES_MAP[entry].LISTSHAREPOINT_TITLE) )
+					syncID=entry;
+			}
+			
+			if (!syncID){
+				alert("Le paramètrage de synchronisation iObeya de cette n'est pas configuré,\n veuillez contactez votre administrateur");
+				return;
+			}
+			
+			g_syncID= syncID;
+		}
+		
+		if (lockSync == true)
 			throw new InterfaceException("Une autre instance est déjà en cours, veuillez patienter.\nlockSync==true");
-        // Pour détecter qu'une autre thread est active
+
+		// Chargement des variables globales
+		// TODO what if FAILED ? <<- throw exception. Caught below
+		loadSyncConf(syncID);
+
+		// Pour détecter qu'une autre thread est active
         // la valeur false est positionnée après l'affichage du pop-up de fin.
-        lockSync=true; 
+        lockSync=true;
         disableButton();
 		refreshTable();     // Rafraîchissement de la vue    
 		
         // Mise à jour de la liste des données RIDA
 		ExecuteOrDelayUntilScriptLoaded(function () {
-			clientContext  = new SP.ClientContext.get_current(); // le contexte ne peut être récupéré que si le script sp.js est loadé.
-			//clientContext  = new SP.ClientContext(SITEURL); // méthode alternative
+			g_clientContext  = new SP.ClientContext.get_current(); // le contexte ne peut être récupéré que si le script sp.js est loadé.
+			//g_clientContext  = new SP.ClientContext(SITEURL); // méthode alternative
 			
-			oList = clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
-			ridaNodes = retrieveListItems(); //checkIn(syncNotes) en call back
+			oList = g_clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
 			retrieveActorsList_sync(); 
+			ridaNodes = retrieveListItems(); //checkIn(syncNotes) en call back
 		}, "sp.js");
 	}
 	catch (e) {
+		// TODO: factoriser la gestion des erreurs
+		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+		console.log(e.message);
 		// On informe l'utilisateur de la raison de l'erreur
-		displayException(e);
-		
 		// Réactivation du bouton
 		enableButton();
-        lockSync=false;
-			}
+		lockSync=false;
+		window.location.reload() ; // rafraichi la page après l'erreur
+	}
 }
 
 /*** 
@@ -162,19 +187,13 @@ function syncNotes(iObeyaNodes){
 	
 		// Détermination des actions à effectuer
 		// résultat dan la variable globale
-		
-		if ( !verifieActorsList_sync() ) { // on arrête
-			enableButton();					// Réactivation du bouton
-        	lockSync=false;
-			window.location.reload() ; // rafraichi la page après l'erreur ( la liste à mal été chargée )
-			return ; // on sort
-		}
-		
+				
 	    g_syncList = compareforSyncAction(ridaNodes,iObeyaNodes, null);
 	    
 	    if (g_syncList == false) {
 	    	enableButton();
             lockSync = false;
+			window.location.reload() ; // rafraichi la page après l'erreur
 	    } else {
 		    
 		      // Synchronisation
@@ -199,8 +218,8 @@ function syncNotes(iObeyaNodes){
 	}
 	catch (e) {
 		// On informe l'utilisateur de la raison de l'erreur
-		displayException(e);
-		
+		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+		console.log(e.message);
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
@@ -248,14 +267,14 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 				if (ridaObject.synchroiObeya == true && ridaObject.status != DELETED_STATUS
 					&& (ridaObject.modificationDate == null || noteModificationDate == null || (Math.abs(ridaObject.modificationDate - noteModificationDate) > TOLERANCEINTERVAL))
 					) {
-					if (ridaObject.modificationDate > noteModificationDate) {
-						// Cas n°3 : mise à jour iObeya
-						syncObject = getSyncObject(todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);				
-					}
-					else {
-						// Cas n°4 : mise à jour RIDA
-						syncObject = getSyncObject(todo_syncRida, ridaObject.idRida, iObeyaObject.id, status_todo);
-					}
+						if (ridaObject.modificationDate > noteModificationDate) {
+							// Cas n°3 : mise à jour iObeya
+							syncObject = getSyncObject(todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);				
+						}
+						else {
+							// Cas n°4 : mise à jour RIDA
+							syncObject = getSyncObject(todo_syncRida, ridaObject.idRida, iObeyaObject.id, status_todo);
+						}
 				}
 				else if (ridaObject.status == DELETED_STATUS || ridaObject.synchroiObeya == false) {
 					// Cas n°5 : passage du post-it en corbeille
@@ -328,13 +347,22 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 
 		if (loc_synclist.length){
 			
-			if (confirm( "Vous avez demandé une synchronisation entre la liste RIDA et le panneau iObeya.\n\n" 
+			if (confirm( 
+					"Vous avez demandé une synchronisation entre la liste Sharepoint courante et les panneaux iObeya suivants :  \n\n"
+						+ BOARDSTOSYNC
+						+ ".\n\n"
 						+ statsMessage 
-						+ " \n\nSouhaitez-vous continuer ?\n" 
-						)) { 
-					return loc_synclist; 
-			 } else 
-				return false;
+						+ " \n\nSouhaitez-vous continuer ?\n\n" 
+						+ "(Liste de paramètres utilisée : "
+						+ g_syncID 
+						+ ")"
+				)) { 
+					if ( !verifieActorsList_sync() ) // si la liste n'a pas été chargée à ce moment là c'est un pb
+						return false; // on sort
+						else return loc_synclist; 
+
+				} else 
+					return false;
 		} else {
 			alert(  "\n\n *** IL N'Y A PAS D'ELEMENT A SYNCHRONISER ***  \n\n " );		
 			return false;
@@ -587,7 +615,8 @@ var response = null;
 			getRooms(syncMethod);
 		}
 		catch(e) {
-			displayException(e);
+		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+		console.log(e.message);
 			// Réactivation du bouton
 			enableButton();
 			window.location.reload() ; // rafraichi la page après l'erreur
@@ -595,7 +624,9 @@ var response = null;
 		
 	};
 	myxmlr.onerror = function () {
-		displayException(new InterfaceException( "Erreur à la connection à iObeya : êtes-vous bien connecté dans un autre onglet ou fenêtre ?" ));
+		var e= "Erreur à la connection à iObeya : êtes-vous bien connecté dans un autre onglet ou fenêtre ?";
+		alert(e);
+		console.log(e);
 		
 		// Réactivation du bouton
 		enableButton();
@@ -635,14 +666,16 @@ g_iO_activeRoom = null;
 	//myxmlr = getJSONData(IOBEYAURL + "/s/j/rooms"); // TODO: fonction desactivé car difficile à suivre au debug
 
 	myxmlr= new XMLHttpRequest();
-	myxmlr.open("GET", IOBEYAURL + "/s/j/rooms", /*true*/ false);// TODO: async = no pour un suivi synchrone et debug facilité
+	myxmlr.open("GET", IOBEYAURL + "/s/j/rooms", true); // TODO: async = no pour un suivi synchrone et debug facilité
 	//myxmlr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8');  // TODO: paramètre qui permet de lancer une requete CORS sans pre-request ( requete "standart" )
 	myxmlr.setRequestHeader('Content-type', 'application/json'); // declanche un prefetch CORS
 	myxmlr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 	myxmlr.withCredentials = true;
 	
 	myxmlr.onerror = function(e) {
-		displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status));
+		var msg = "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status;
+		alert(msg);
+		console.log(msg);
 		enableButton();
         lockSync=false;
 		window.location.reload() ; // rafraichi la page après l'erreur
@@ -664,20 +697,25 @@ g_iO_activeRoom = null;
 		
 			if (g_iO_activeRoom == null) {
 				throw new InterfaceException("La room \"" + ROOM_NAME + "\" n'existe pas dans iObeya.");
+				enableButton();
+				lockSync=false;
+				window.location.reload() ; // rafraichi la page après l'erreur
 			}
 			
-			getBoards(syncMethod);
+			getBoards(syncMethod); // on propage la fonction qui sera appelée à la fin...
+			
 		}
 		catch(e) {
-			displayException(e);
+			alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+			console.log(e.message);
 			// Réactivation du bouton
 			enableButton();
+			lockSync=false;
+			window.location.reload() ; // rafraichi la page après l'erreur
 		}
 		nextRequest();
 	};
 	myxmlr.send();
-	
-	//startQueue();
 }
 
 /*** Récupération des boards ***/
@@ -718,28 +756,31 @@ Instead of sending the board's json object, we need to pass an EntityReferenceDT
 Il faut utiliser le container.id pour la création, modification d'éléments dans un board(notes / stickers / labels ?)
 */
 
+var g_boardfound=0;
+var g_countBoardtoload; // pour gérer l'asynchronisme
 
 function getBoards(syncMethod) {
 var myxmlr = null;
-var boardfound=0;
-	
+
 	console.log("Fetch boards");
 
 	g_iO_boards = new Array();
     iO_nodes = new Array();
 
-// TODO: remettre l'appel getJSONData
+// TODO: remettre l'appel getJSONData ( pour permettre un fonctionnement + agnostique de l'environnement ex: navigateur ou GoogleNodejs)
 //	myxmlr = getJSONData(IOBEYAURL + "/s/j/rooms/" + g_iO_activeRoom.id + "/details");
+	
 		myxmlr= new XMLHttpRequest();
-		myxmlr.open("GET", IOBEYAURL + "/s/j/rooms/" + g_iO_activeRoom.id + "/details", /*true*/ false);// TODO: async = no pour un suivi synchrone et debug facilité
-		//myxmlr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8');// fonction desactivé car difficile à suivre au debug
+		myxmlr.open("GET", IOBEYAURL + "/s/j/rooms/" + g_iO_activeRoom.id + "/details", true);
 		myxmlr.setRequestHeader('Content-type', 'application/json');
 		myxmlr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 		myxmlr.withCredentials = true;
 
-
 		myxmlr.onerror = function(e) {
-			displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status));
+			var msg= "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status;
+			alert(msg);
+			console.log(msg);
+			
 			// Réactivation du bouton
 			enableButton();
 			lockSync=false;
@@ -748,85 +789,101 @@ var boardfound=0;
 
 		myxmlr.onload = function () {
 			try {
-				var roomElementsArray = JSON.parse(this.responseText); // la réponse donne la liste des boards
-				
+				var roomElementsArray = JSON.parse(this.responseText); // la réponse donne la liste des boards				
 				roomElementsArray.forEach(function(elmnt) {
+					
 					if (elmnt["@class"] === "com.iobeya.dto.BoardDTO") { // filtrage par type
-						// Get active board, sur variable de paramétrage : boardList 
-
-						BOARDSTOSYNC.forEach( function(board) { 
-                        // on vérifie que le panneau doit être synchronisé
-							if (elmnt.name == board) {
+						g_countBoardtoload=BOARDSTOSYNC.length; // pour gérer l'attente de fin des threads
+						BOARDSTOSYNC.forEach( function(board) {  // on récupère le contenu chaque panneaux
+							if (elmnt.name == board) { // on vérifie que le panneau doit être synchronisé
 								console.log(" found configured nameBoard: \"" + elmnt.name);
 								g_iO_boards.push(elmnt); // on ajoute la board dans l'array
 								if ( elmnt.name === BOARDSTOSYNC[0] ) // on determine quelle l'id de la board par defaut dans l'Array de configuration.
 									g_defaultboard_index=g_iO_boards.length-1;
-								boardfound++;
-								getNodes(syncMethod, elmnt.id, elmnt.name);
-							}
+								g_boardfound++;
+								getNodes(elmnt.id, elmnt.name); // attention compliqué car asynchrone, nécessite un timer...
+							}		
 						});
-						
 					}
-
 				});
-
 			} catch(e) {
-				displayException(e);
+				alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+				console.log(e.message);
 				// Réactivation du bouton
 				enableButton();
-			}
-
+				lockSync=false;
+				window.location.reload() ; // rafraichi la page après l'erreur
+				}
 		};
 	
-		//startQueue();
-		myxmlr.send(); // on lance l'appel de la méthode assynchrone.
-
-		// TODO: approfondir les tests ici et crier si nécessaire
-		// véridier si l'on a bien le nombre de board attendu ou s'il en manque...
-		// vérifier si g_defaultboard_index n'est pas vide
-    
-        console.log(boardfound);
-        console.log(BOARDSTOSYNC.length)
-        console.log(g_defaultboard_index);
-        if (boardfound != BOARDSTOSYNC.length) {
-            throw new InterfaceException("Le nombre de tableaux à synchroniser est différent du nombre de tableaux attendus");
-        }
-        
-        if ( g_defaultboard_index == null ) {
-            throw new InterfaceException("Aucun tableau n'a été sélectionné");
-        }
-
-		if (boardfound == 0) { // pas de board trouvé, on arrête.
-				throw new InterfaceException("Aucun tableau specifié dans le fichier de configuration n'a été trouvé dans la Room : " + board + ", vérifiez la configuration ");
-		}
-
-	
-    syncMethod(iO_nodes); // on lance la synchro
-    nextRequest(); // on dépile la queue
+		myxmlr.send(); // on lance l'appel de la méthode asynchrone.
+		// cette function appelle la methode de synchro "syncMethod" 
+		// quand l'ensemble des threads ont terminé
+		waitallboardloaded(syncMethod);
 }
 
-/*** Récupération des éléments ***/
+//
+// fonction qui permet d'attendre que l'ensemble des load on été effectués
+// le mode asynchrone oblige a utiliser un timer
+// appelle la fonction syncMethod quand terminé
 
-function getNodes(syncMethod, l_boardid, boardname) {
+var g_countboardload; // comptage...
+
+function waitallboardloaded (syncMethod){
+	
+	var timerId = window.setInterval(function(){
+		
+		console.log("Timer wait load boards: " + g_countboardload++);
+
+		if (!g_countBoardtoload) {  // >0 tant que tous les panneaux n'ont pas été lu...   
+			console.log(g_boardfound);
+			console.log(BOARDSTOSYNC.length)
+			console.log(g_defaultboard_index);
+			if (g_boardfound != BOARDSTOSYNC.length) {
+					throw new InterfaceException("Le nombre de tableaux à synchroniser est différent du nombre de tableaux attendus");
+				}
+
+			if ( g_defaultboard_index == null ) {
+				throw new InterfaceException("Aucun tableau n'a été sélectionné");
+				}
+
+			if (g_boardfound == 0) { // pas de board trouvé, on arrête.
+				throw new InterfaceException("Aucun tableau specifié dans le fichier de configuration n'a été trouvé dans la Room : " + board + ", vérifiez la configuration ");
+				}
+
+			// on lance ici la fonctionne de synchro
+			clearInterval(timerId);
+			console.log("Loaded board complete" + g_boardfound );
+    		syncMethod(iO_nodes); // on lance la synchro
+			// on dépile maintenant la queue des requetes async à lancer à la fin
+    		nextRequest();	
+		}
+		
+	}, 500); // on check toute les 1/2 secondes
+}
+
+/*** Récupération des éléments du tableau ***/
+
+function getNodes(l_boardid, boardname) {
 var myxmlr = null;
 	
 	console.log('Getting nodes');	
 	myxmlr= new XMLHttpRequest();
-	myxmlr.open("GET",IOBEYAURL + "/s/j/boards/" + l_boardid + "/details", /*true*/ false); // TODO: async = no pour un suivi synchrone et debug facilité
-	//myxmlr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8'); // fonction desactivé car difficile à suivre au debug
+	myxmlr.open("GET",IOBEYAURL + "/s/j/boards/" + l_boardid + "/details",true); 
 	myxmlr.setRequestHeader('Content-type', 'application/json');
 	myxmlr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 	myxmlr.withCredentials = true;
 	
 	myxmlr.onerror = function(e) {
-		displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/" 
-												+ l_boardid + "/details" + "\n Error Status: " + e.target.status));
+		var msg = "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/" 
+					+ l_boardid + "/details" + "\n Error Status: " + e.target.status;
+		alert(msg);
+		console.log(msg);
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
 		window.location.reload() ; // rafraichi la page après l'erreur
 		};
-	
 	
 	myxmlr.onload = function () {
 		try {
@@ -866,27 +923,25 @@ var myxmlr = null;
 				}
 			}
 			
-			// sorting with zOrder
+			// sorting nodes with zOrder
 			iO_nodes.sort(function(obj1, obj2) {
 				return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);
 			});
-            			
-            // mettre ds func 
-			//syncMethod(nodes);
-			//nextRequest();
-		}
-		catch(e) {
-			displayException(e);
+            
+			g_countBoardtoload--; // pour gérer l'asynchronisme	
 			
+		} catch(e) {
+			alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+			console.log(e.message);
 			// Réactivation du bouton
 			enableButton();
-		}
+        	lockSync=false;
+			window.location.reload() ; // rafraichi la page après l'erreur
+			}
 	};
 	
-	myxmlr.send();
-	//startQueue();
+	myxmlr.send(); // on lance la requete en asynchrone...
 }
-
 
 /*** 
 	
@@ -899,8 +954,6 @@ var myxmlr = null;
 	ex: boardid / boardname
 	
 *** /
-
-
 
  /* Fonctions de synchronisation pour l'édition des éléments RIDA et iObeya
  */
@@ -920,9 +973,7 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 		// Zone d'atterrissage
 		var roll = findRollbyLabelName(nodesiObeya, ridaObj.status,l_boardid);
 
-
 		// initialisation de la structure de la note 
-		
 	    var newNote = {};
 		
 		// Initialisation de l'object Notes
@@ -942,6 +993,14 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 	    newNote.y = 0;
 	    newNote.zOrder = 0;
 		newNote.color = NOTE_DEFAULT_COLOR;
+		
+		newNote.props= {
+            'content' : 	"", 
+            'title' : 		"", // charge en J/H
+            'responsible' : "", // due date 
+            'date' : 		"", // target date
+			'workload' :  	"" // undisplayed label "workload".
+        };
 		
 		// Place le contenu "coeur de la note" : les 4 champs visibles
 		// note : la fonction pourraient évoluer vers d'autre nature de note
@@ -986,12 +1045,13 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
         
 	    // Etiquette du responsable
 	    var newLabel = null;
-	    if (ridaObj.actor != null) {
-	    	newLabel = createActorLabel(ridaObj);
-	    	newLabel = placeLabel(newLabel, newNote);
-	    	nodesiObeya.push(newLabel);
-	    }
-	    
+		if (ridaObj.actor)
+	    	if (ridaObj.actor.hasOwnProperty(length)) { // check au cas où...
+				newLabel = createActorLabel(ridaObj);
+				newLabel = placeLabel(newLabel, newNote);
+				nodesiObeya.push(newLabel);
+			}
+		
 	    // Sticker pourcentage achevé
 	    var newPercentage = null;
 	    if (ridaObj.percentComplete != null && PERCENTAGE_IOBEYASTICKER_MAPPING.map[ridaObj.percentComplete] != null) {
@@ -1100,8 +1160,8 @@ function updateNoteIniObeya(nodesRida, nodesiObeya, ridaObj, iObeyaObj, iObeyaOv
 
 /*** Détermination de l'action à effectuer sur une étiquette "Ressource" (création, modification, suppression) ***/
 function manageLabelUpdate(nodesiObeya, ridaObj, note, overlappingElements) {
-	var label = getAssociatedLabel(overlappingElements);
-	
+	var label = getAssociatedLabel(overlappingElements);	
+
     if (ridaObj.actor == null && label != null)  {
     	// 1er cas : suppression de l'étiquette du responsable
     	removeiObeyaElement(label.id);
@@ -1187,92 +1247,166 @@ function managePriorityStickerUpdate(nodesiObeya, ridaObj, note, overlappingElem
 }
 
 /*** 
-
-	Remplissage des propriétés d'un post-it dans iObeya 
+	Remplissage des propriétés d'un post-it dans iObeya
 	Cette méthode ne s'occupe que des propriétés visible.
 	Cette méthode pourrait évoluer pour l'objet de type "CardId" en v3.4
-	
-
 ***/
 
-function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj){
+function fillNoteForiObeya(note, nodesRida, nodesiObeya, ridaObj) {
+	// Vérification des informations à récupérer
+	if (!ridaObj.hasOwnProperty('modificationDate'))
+		throw new InterfaceException("Le champ \"modificationDate\" ne figure pas dans la liste des champs RIDA à synchroniser.");
+	if (!ridaObj.hasOwnProperty('creator'))
+		throw new InterfaceException("Le champ \"creator\" ne figure pas dans la liste des champs RIDA à synchroniser.");
+	if (!ridaObj.hasOwnProperty('modifier'))
+		throw new InterfaceException("Le champ \"modifier\" ne figure pas dans la liste des champs RIDA à synchroniser.");
 
+	// on traite les données
 	try {
-		// Vérification des informations à récupérer
-		
-		if (ridaObj.modificationDate == undefined) {
-			throw new InterfaceException("Le champ \"modificationDate\" ne figure pas dans la liste des champs RIDA à synchroniser.");
-		}
-		
-		if (ridaObj.creator == undefined) {
-			throw new InterfaceException("Le champ \"creator\" ne figure pas dans la liste des champs RIDA à synchroniser.");
-		}
-		
-		if (ridaObj.modifier == undefined) {
-			throw new InterfaceException("Le champ \"modifier\" ne figure pas dans la liste des champs RIDA à synchroniser.");
-		}
-		
-		
-		// on traite les données
-		
 		// Traitement du statut (statut par défaut)
-		if (ridaObj.status == null) { ridaObj.status = DROP_ZONE; }
-		
+		if (!ridaObj.status) // Si bug: avant:  if(ridaObj.status == null)
+			ridaObj.status = DROP_ZONE;
+
 		// Récupération de la date de modification
-	    var updateDate = ridaObj.modificationDate;
-		if (updateDate == null) {
+		var updateDate = ridaObj.modificationDate;
+		if (!updateDate)  // Si bug: avant:  if(update == null)
 			updateDate = new Date().getTime();
-		}
-		
+
 		// Traitement de la couleur
-		if (ridaObj.firmDeadline == true) {
-			// Echéance ferme : post-it rouge
+		if (ridaObj.firmDeadline == true)
+		// Echéance ferme : post-it rouge
 			note.color = NOTE_WARNING_COLOR;
-		}
-		else if (note.color == NOTE_WARNING_COLOR && ridaObj.firmDeadline == false) {
-			// Cette tâche n'a plus d'échéance ferme : post-it jaune
+		else if (note.color == NOTE_WARNING_COLOR && ridaObj.firmDeadline == false)
+		// Cette tâche n'a plus d'échéance ferme : post-it jaune
 			note.color = NOTE_DEFAULT_COLOR;
-		}
 
 		// Post-it
-	    note.height = NOTE_DEFAULT_HEIGHT;
-	    note.width = NOTE_DEFAULT_WIDTH;
-        
-        
-        /* New Method for version 3.3 for iObeya*/
-        
-		var contentLabel = "", label0 = "", label1 = "", label2 = "", label3 = "";
-		
-	    if (ridaObj.subject != null)
-	        contentLabel = parseNoteText(ridaObj.subject);
-	    if (ridaObj.consomme != null)
-	        label0 = ridaObj.consomme.toString().replace(".", ",") + " J/H (Consom.)";
-        if (ridaObj.resteafaire != null)
-            label1 = ridaObj.resteafaire.toString().replace(".", ",") + " J/H (RAF)";
-		if (ridaObj.workload != null)
-            label2 = ridaObj.workload.toString().replace(".", ",") + " J/H (Estim)";
-	    if (ridaObj.dueDate != null)
-	        label3 = new Date(ridaObj.dueDate).format(DATE_FORMAT);
-        if (ridaObj.modifier != null)
-		    note.modifier = ridaObj.modifier;
-        
-        /* New properties for version 3.3 for iObeya*/
+		note.height = NOTE_DEFAULT_HEIGHT;
+		note.width = NOTE_DEFAULT_WIDTH;
 
-        note.props= {
-            'content' : 	contentLabel, 
-            'title' : 		label0, // charge en J/H
-            'responsible' : label1, // due date 
-            'date' : 		label3, // target date
-			'workload' :  	label2 // undisplayed label "workload".
-        };
-        
-	    note.modificationDate = updateDate;
-	    return note;
+		/* New Method for version 3.3 for iObeya*/
+		if (ridaObj.modifier !== null)
+			note.modifier = ridaObj.modifier;
+
+		/* New properties for version 3.3 for iObeya*/
+		mapRidaToIObeya(ridaObj, note);
+
+		note.modificationDate = updateDate;
+		return note;
 	}
-	catch(e) {
+	catch (e) {
 		throw e;
 	}
 }
+
+/***
+ * Convertit un objet RIDA en fragment d'objet iObeya, en fonction du mapping défini globalement
+ * (IOBEYANOTE_MAPPING)
+ * @param ridaObj : Object objet RIDA
+ * @param iObeyaNote : Object iObeya sur lequel sont reportée les propriétés de l'objet RIDA
+ */
+function mapRidaToIObeya(ridaObj, iObeyaNote) {
+
+	// Parcours de tous les champs du mapping
+	for(var key in IOBEYANOTE_MAPPING) {
+		// 'mapingItem' = 'content'|'title'|'responsible'|...
+		var mappingItem = IOBEYANOTE_MAPPING[key];
+
+		// Vérification de la présence des champs nécessaires
+		if (!mappingItem.hasOwnProperty('type')) {
+			// throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'type\'");
+			console.info("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ 'type'. C'est peut-être normal.");
+			continue;
+		}
+		if (!mappingItem.hasOwnProperty('rida_field')) {
+			// throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'rida_field\'");
+			console.info("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ 'rida_field'. C'est peut-être normal.");
+			continue;
+		}
+
+		// Initialisation à partir du template iObeya
+		var type = mappingItem.type;
+		var rida_field = mappingItem.rida_field;
+		var emptyString = "";
+		if (mappingItem.emptyString )
+			var emptyString = mappingItem.emptyString;
+		var data = "";
+		var cntconcat = 0;
+		
+		// Si valeur RIDA est définie, on la traite
+		if(ridaObj[rida_field] || rida_field.constructor === Array) {
+			// En fonction du type de traitement voulu pour le champ de la note
+			switch (type) {
+				// Mapping simple 1 -> 1
+				case 'text':
+					data = parseNoteText(ridaObj[rida_field]);
+					break;
+
+				// Mapping complexe, * -> 1
+				case 'concat':
+					if (rida_field.constructor === Array) {
+						// Définition de la chaine de séparation des champs
+						var concatString = ":";
+						if (mappingItem.hasOwnProperty('concatString'))
+							concatString = mappingItem.concatString;
+
+						rida_field.forEach(function (value, index) {
+							// Cas de valeurs nulles non prises en compte par le test qui précède le switch
+							
+							if(ridaObj[value]){
+								data = data.concat(ridaObj[value]).trim(); // TODO ERIC : ajouté trim pour nettoyer les whitespaces
+								cntconcat++; 
+								// On ajoute la chaine de séparation s'il y a un élément qui suit
+							} else 
+								data = data.concat(emptyString); // si le champs est vide on place une valeur par défaut pour éviter que le split foire dans l'autre sens
+							
+							if (rida_field[index + 1])
+								data = data.concat(concatString);
+						 });
+						
+						// si l'ensemble des colonnes sharepoint sont vides on supprime le texte
+						if (!cntconcat) 
+								data="";
+					} else if (rida_field.constructor === String) { // cas s'il n'y qu'une seule colonne (erreur de config tolérable)
+						data = parseNoteText(ridaObj[rida_field]);
+					}
+					break;
+
+				// Mapping avec constante : 1 -> 1 + 'string'
+				case 'numeric':
+					data = ridaObj[rida_field].toString().replace(".", ",");
+					// Si une string à ajouter a été définie :
+					if (mappingItem.hasOwnProperty('unit'))
+						data = data.concat(mappingItem.unit);
+					break;
+
+				// Mapping de date : 1 -> 1 ; avec formatage en JJ/MM/YYYY
+				case 'date':
+					data = new Date(ridaObj.dueDate).format(DATE_FORMAT);
+					break;
+				default:
+					break;
+			} // end switch
+		} // end if(ridaObj[rida_field] || rida_field.constructor === Array)
+
+		// On vient de construire la donnée à mettre dans le champ iObeya
+		// Dans l'arbre de l'objet iObeya, on récupère le parent de l'objet à modifier
+		// (on a aussi besoin d'un pointeur)
+		
+		var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
+		
+		if ( iObeyaPartPtr){ // on vérifie que la propriété existe
+			iObeyaPartPtr[key] = data;
+		} else {
+			// TODO + FIXME : lors de la création d'une note la propriété peut ne pas exister car par exemple props peux être absent...
+			var debug=true;
+		}
+
+
+	}
+}
+
+
 
 /*** Création d'une étiquette "Responsable" dans iObeya (initialisation) ***/
 function createActorLabel(ridaObj) {
@@ -1330,8 +1464,18 @@ function updateActorLabel(label, ridaObj) {
 
 /*** Remplissage des propriétés d'une étiquette "Responsable" dans iObeya ***/
 function fillActorLabel(label, ridaObj) {
-	try {
-    	label.contentLabel = ridaObj.actor;
+	
+
+	try{
+		if (ridaObj.actor.hasOwnProperty(length)) { // on vérifie au cas où...
+				label.contentLabel = ridaObj.actor;
+			} 
+	} catch(e) {
+			label.contentLabel = "/!\\Content type";
+			console.log("FillActorLabel: contenttype not text");
+	}
+	
+	try {		
 	   	if (ridaObj.modifier != null)
 	   		label.modifier = ridaObj.modifier;
    		if (ridaObj.modificationDate!= null)
@@ -1580,6 +1724,54 @@ function getBoardElementContainerFromRidaObj(ridaObj){
 }
 
 
+/***
+ * A partir de 'propertyName', qui est une clé de la structure 'IOBEYANOTE_MAPPING',
+ * retourne un pointeur sur la partie de l'objet 'iObeyaObj' qui contient cette clé
+ * afin que celle-ci puisse être modifiée.
+ * Algo: Cette fonction parcourt iObeyaObj à la recherche de la clé correcte, à partir de
+ * l'arborescence définie dans IOBEYANOTE_MAPPING via les clés 'iobeya_parent'.
+ *
+ * Exemple:
+ * > var iObeyaObj = { 'props': {
+ * >      'content': 'Comment ne pas mourir de peur',
+ * >      'title': 'Vivre, vol.2:cdc'
+ * > } };
+ * > var r = getiObeyaPropertyObject(iObeyaObj, 'title');
+ * "r" vaut "iObeya['props']"
+ *
+ * @param iObeyaObj Object: objet iObeya complet
+ * @param propertyName String: nom d'une propriété iObeya, qui est aussi une clé sur le mapping IOBEYANOTE_MAPPING
+ * @returns iObeyaProperty Object: Pointeur vers le sous-ensemble de l'objet iObeya qui contient la propriété 'propertyName'
+ */
+function getiObeyaPropertyObject(iObeyaObj, propertyName) {
+	var iObeyaProperty = iObeyaObj;
+	// Stocke le chemin remonté dans le mapping depuis 'propertyName'
+	var chain = [];
+	// Noeud courant
+	var node = propertyName;
+
+	try{
+		// On construit le chemin qui mène à la racine, tant que node.iobeya_parent est défini
+		while(node
+		&& IOBEYANOTE_MAPPING.hasOwnProperty(node)
+		&& IOBEYANOTE_MAPPING[node].iobeya_parent // équivaut à != ['' | null | undefined ] (au moins)
+			) {
+			// On remplace le noeud par son parent
+			node = IOBEYANOTE_MAPPING[node].iobeya_parent;
+			chain.push(node); // Sauvegarde du chemin parcouru
+		}
+		// On a le chemin, on descend de la racine de l'objet iObeya jusqu'à la feuille
+		while(chain.length > 0) {
+			iObeyaProperty = iObeyaProperty[chain.pop()];
+		}
+	} catch (e) {
+		var interfaceE = new InterfaceException("Propriété '"+node+"' non trouvée dans l'objet iObeya fourni.");
+		interfaceE.parentException = e; // FIXME: non standard
+		throw interfaceE;
+	}
+	return iObeyaProperty;
+}
+
 /*** Manipulation de d'array ***/
 
 
@@ -1619,8 +1811,8 @@ function executeCommit() {
 			// Tous les process iObeya ont été lancés, et tous sont terminés
 			g_allThreads = false;
 			console.log("Commit SharePoint");
-			console.log(clientContext); // Contrôle de l'état de la session SharePoint
-			clientContext.executeQueryAsync(Function.createDelegate(this, this.onUpdateQuerySucceeded), Function.createDelegate(this, this.onQueryFailed));
+			console.log(g_clientContext); // Contrôle de l'état de la session SharePoint
+			g_clientContext.executeQueryAsync(Function.createDelegate(this, this.onUpdateQuerySucceeded), Function.createDelegate(this, this.onQueryFailed));
 		}
 	}, 1000);
 }
@@ -1714,17 +1906,111 @@ function refreshTable() {
 	D'autre fonctions connexes existent pour la synchronisation des rolls dans les panneaux dans le fichier interfacerefreshactors.js
 	//  _sync pour dissocier d'une fonction similaire appelée dans call refreshactor.asp
 	
-	note : interfacerefreshactors.js n'est pas incluse dans les en-têtes des pages,
-	ses methodes ne peuvent pas être appellées directement via le bouton iObeya > inclusion de cette fonction ici.
+	note : interfacerefreshactors.js n'est pas inclus dans les en-têtes des pages,
+	ses methodes ne peuvent pas être appellées directement via le bouton iObeya DONC > inclusion de cette fonction ici.
+
+  	23 juin 2017 : modification de la façon dont la liste des acteurs est gérés. Il est maintenant possible de gérer les acteurs depuis une autre liste.
 
 ***/
 
 
 function retrieveActorsList_sync() { 
-    var context, taxonomySession, termStore, parentTerm, terms, termSet,termsEnumerator, currentTerm;
+	
+	if (window.hasOwnProperty('ACTORLIST_TITLE')) // 
+		retrieveActorsList_sync_splist()
+	else 
+		retrieveActorsList_sync_taxonomy() ;
+	
+} // fin retrieveActorsList_sync
 
-	context = SP.ClientContext.get_current();
-	taxonomySession = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
+
+// function gerant la liste d'acteurs utilisant une liste sharepoint dédiée
+var g_collListItem2, g_retrieveactorListStatus; // TODO: @Eric voir pour eviter une variable globale pour syncactors liste, voir si la propriete est passee dans ongetquerysuceed.
+
+function retrieveActorsList_sync_splist() { 
+  
+	try {
+		g_retrieveactorListStatus= "start";
+		console.log(g_retrieveactorListStatus);
+		//g_collcontxtListItem2 = new SP.ClientContext.get_current(); // new fresh object 
+	    var l_oList = g_clientContext.get_web().get_lists().getByTitle(ACTORLIST_TITLE); // fresh variable from actor liste
+	    var l_camlQuery = new SP.CamlQuery();
+	    l_camlQuery.set_viewXml("<View />");
+	    g_collListItem2 = l_oList.getItems(l_camlQuery);
+	    g_clientContext.load(g_collListItem2);
+	    g_clientContext.executeQueryAsync(Function.createDelegate(this, this.onGetQuerySucceededActorslist), Function.createDelegate(this, this.onQueryFailed));
+		g_retrieveactorListStatus= "querying";
+		console.log(g_retrieveactorListStatus);
+	    return ;
+	} catch (e) {
+		throw new InterfaceException("Les données de la liste d'acteurs \"" + ACTORLIST_TITLE + "\" n'ont pas pu être trouvées dans Sharepoint");
+    }
+}
+
+// fonction async de complétion la requête sharepoint.
+
+function onGetQuerySucceededActorslist(sender, args) {
+    var fields, l_ridaobj, listItemEnumerator, key,actorname,actorID,content={};
+    g_actorsTermsList = []; // vider le tableau d'objet ( on déréférence l'ancienne valeur )
+    g_actorsTermsListTable = []; // la liste d'array d'acteurs par panneau 
+
+    try {
+        console.log("Retrieve Actors sharepoint list items");
+        console.log(g_collListItem2);
+
+		// initialise la liste des arrays d'acteurs
+		for(var panneau in BOARDSTOSYNC)
+			g_actorsTermsListTable[BOARDSTOSYNC[panneau]]=[];
+		// on récupère la liste d'acteur
+        listItemEnumerator = g_collListItem2.getEnumerator();
+		g_retrieveactorListStatus= "parsing";
+		console.log(g_retrieveactorListStatus);
+	    while (listItemEnumerator.moveNext()) {
+			
+			fields = listItemEnumerator.get_current().get_fieldValues();
+			actorname =formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["actor"]]).trim();
+			panneauactor =formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["PanneauiObeya"]]).trim();
+			actorID =formateFieldToExport(fields["ID"]);		
+			
+			if (actorname){
+				var content={};
+				content["actor"]=actorname;
+				content["PanneauiObeya"]=panneauactor;			
+				content["ID"]=actorID;	
+				g_actorsTermsList.push(content); // on ajouter l'acteur dans la liste
+				g_retrieveactorListStatus+=".";
+				console.log(g_retrieveactorListStatus);
+				}
+				
+			if (panneauactor)	// on ajoute l'entrée aux listes dédiées par panneau
+				for(var panneau in g_actorsTermsListTable)
+						if (panneauactor.toLocaleLowerCase() === panneau.toLocaleLowerCase()){ // s'il n'est pas dans la liste on ne le traite pas
+							g_actorsTermsListTable[panneau].push(actorname);
+						}
+			}// while
+	} catch (e) {
+			var msg = "Une erreur est survenue à la lecture de la liste acteurs sharepoint : " + e.message
+								  	+"possiblement une des propriétés de la liste \"ACTORLIST_MATCHINGNAME\" n'a pas été trouvée."
+									+"\n vérifiez à tout hasard le fichier de configuration interfaceConfig.js ou votre liste sharepoint \n ";
+		
+			alert(msg);
+			console.log(msg);
+			enableButton();// Réactivation du bouton
+			lockSync=false;
+			window.location.reload() ; // rafraichi la page après l'erreur
+	}
+	
+		g_retrieveactorListStatus= "done";
+		console.log(g_retrieveactorListStatus);
+}
+
+// function utilisant la taxonomie
+
+function retrieveActorsList_sync_taxonomy() { 
+	var taxonomySession, termStore, parentTerm, terms, termSet,termsEnumerator, currentTerm;
+
+	l_clientContext = SP.ClientContext.get_current(); // fresh local context
+	taxonomySession = SP.Taxonomy.TaxonomySession.getTaxonomySession(l_clientContext);
     termStore = taxonomySession.get_termStores().getById(TAXONOMY_ID);
 	g_actorsTermsList = []; // vider le tableau d'objet ( on déréférence l'ancienne valeur )
 
@@ -1733,28 +2019,30 @@ function retrieveActorsList_sync() {
 	termSet = termStore.getTermSet(ACTORSSET_ID); // on utilise le ACTORSSET_ID
 	terms = termSet.getAllTerms(); // including chirld
 		
-	context.load(terms);
+	l_clientContext.load(terms);
 	
-	context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
+	l_clientContext.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
 			// fonction Async qui récupère les termes...
 			termsEnumerator = terms.getEnumerator();
 			// Récupération des termes (acteurs)
 			while (termsEnumerator.moveNext()) {
-				currentTerm = termsEnumerator.get_current();
+				currentTerm = termsEnumerator.get_current(); // object sharepoint taxonomie
 				g_actorsTermsList.push(currentTerm);
 				}
 			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message()); }));
-	
-} // fin retrieveActorsList_sync
+}
 
+
+//TODO : faire un timer car la fonction à besoin de + de temps pour s'executer. ( fct asynchrone... selon query sharepoint)
 
 function verifieActorsList_sync (){
 	if (!g_actorsTermsList.length )
-			if (confirm( "La liste des acteurs (taxonomie Sharepoint) récupérée est vide, souhaitez-vous tenter de la recharger ?" )) { 
+			if (confirm( "La liste des acteurs (c'est un pb) récupérée est vide, souhaitez-vous tenter de la recharger ?" )) { 
 					retrieveActorsList_sync();
 				if (!g_actorsTermsList.length ) // toujours vide pb...
-					if (confirm( "Impossible de recharger la liste, pb de connexion, arrêter ?" )) 
-					return false; // on ne traite pas
-			 } else  return false; // on ne traite pas
+					if (confirm( "Impossible de recharger la liste, pb de chargement asynchrone, arrêter ?" )) 
+						return false; // on ne traite pas
+			 } else  
+				 return false; // on ne traite pas
 	return true;
 }

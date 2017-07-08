@@ -49,21 +49,141 @@ le site suivant semble propose des méthodes pour aider ... à comprendre
 ***/
 
 
+// TODO : modifier le code pour que cela prenne compte d'une liste SP d'acteur et non pas de taxonomy
+
+
 var g_actorsTermsListTable = [];// multi tableau
 var g_actorsTermsFullLoadCount=0;// pour être sûr d'avoir tout loadé...
 var g_countl=0;// pour être sûr d'avoir tout loadé...
 
-function retrieveActorsList_refresh(){ // Initialisation de l'array multitableau
- 
-	g_actorsTermsFullLoadCount=ACTORSSUBSET_ID.length;
-	
-	for ( var i in ACTORSSUBSET_ID ){
-			getActorsByTermsID(i); // asynchrone !
-			}
+function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multitableau
 
-	waitUnitTermsareFullyLoaded(); // appelle la fonction en paramètre quand fini
+	// il faut parser l'url pour déterminer le nom du panneau donc celui de la site concernée
+	// Initialisation des paramètres globaux
+	var syncID;
+
 	
+ 	if (!panneau){
+		alert(	"L'url d'appel ne contient par le nom du panneau en parametre (?boardname=xxx),\n"
+			  	+"impossible de rafraichir les acteurs.\n" 
+				+"Contactez l'administrateur du panneau."
+			 );
+		return;
+		}
+	
+	try {
+		for (entry in SYNC_PROPERTIES_MAP){
+			panneau=decodeURI(panneau); // on decode en uri pour permettre les espaces et autres caractères
+			
+			
+			
+			if (SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC instanceof Array ){
+				for (arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
+					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr]) ) // not an array
+							syncID=entry;
+			} else if (panneau.includes(SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC) ) // not an array
+					syncID=entry;
+			}
+			
+		
+		if (!syncID){
+				alert("Le panneau spécifié n'a pas été trouvé dans le fichier de configuration. Arret"
+					 );
+				return;
+				}
+			g_syncID= syncID;
+
+		// Chargement des variables globales
+		// TODO what if FAILED ? <<- throw exception. Caught below
+		loadSyncConf(syncID);
+	} catch (e) {
+		alert(e.message);
+	}
+
+	if (window.hasOwnProperty('ACTORLIST_TITLE'))
+		retrieveActorsList_refresh_splist();
+	else
+		retrieveActorsList_refresh_taxonomy();
+			
 } // fin
+
+
+/** Fonction qui gère la liste d'acteurs utilisant une liste sharepoint dédiée */
+var g_spActorsList; // TODO: voir pour eviter une variable globale pour syncactors liste, voir si la propriete peux être passee dans ongetquerysuceed.
+var g_collcontxtListItem2; 
+
+function retrieveActorsList_refresh_splist() {
+	try {
+		g_collcontxtListItem2 = new SP.ClientContext.get_current(); // new fresh object
+		var l_oList = g_collcontxtListItem2.get_web().get_lists().getByTitle(ACTORLIST_TITLE); // fresh variable from actor liste
+		var l_camlQuery = new SP.CamlQuery();
+		l_camlQuery.set_viewXml("<View />");
+		g_spActorsList = l_oList.getItems(l_camlQuery);
+		g_collcontxtListItem2.load(g_spActorsList);
+		g_collcontxtListItem2.executeQueryAsync(Function.createDelegate(this, this.onGetQuerySucceededRetrieveActorsList), Function.createDelegate(this, this.onQueryFailed));
+	} catch (e) {
+		throw new InterfaceException("Les données de la liste d'acteurs \"" + ACTORLIST_TITLE + "\" n'ont pas pu être trouvées dans Sharepoint");
+	}
+}
+
+/** fonction async de complétion la requête sharepoint */
+function onGetQuerySucceededRetrieveActorsList(sender, args) {
+	var fields, listItemEnumerator, actorname, panneauactor;
+	g_actorsTermsList = []; // vider le tableau d'objet ( on déréférence l'ancienne valeur )
+	g_actorsTermsListTable = []; // la liste d'array d'acteurs par panneau
+
+	try {
+		console.log("Retrieve Actors sharepoint list items");
+		console.log(g_spActorsList);
+
+		// initialise la liste des arrays d'acteurs
+		for (var panneau in BOARDSTOSYNC) {
+			g_actorsTermsListTable[BOARDSTOSYNC[panneau]] = [];
+		}
+		// on récupère la liste d'acteur
+		listItemEnumerator = g_spActorsList.getEnumerator();
+		while (listItemEnumerator.moveNext()) {
+			fields = listItemEnumerator.get_current().get_fieldValues();
+			actorname = formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["actor"]]).trim();
+			panneauactor = formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["PanneauiObeya"]]).trim();
+
+			if (actorname)
+				g_actorsTermsList.push(actorname); // on ajouter l'acteur dans la liste
+
+			if (panneauactor) {  // on ajoute l'entrée aux listes dédiées par panneau
+				for (var panneau in g_actorsTermsListTable) {
+					if (panneauactor.toLocaleLowerCase() === panneau.toLocaleLowerCase()) { // s'il n'est pas dans la liste on ne le traite pas
+						g_actorsTermsListTable[panneau].push(actorname);
+					}
+				}
+			}
+		}// while
+
+		// on appelle la fonction qui effectue le refresh ( on se logue d'abord sur le iobeya et on récupère les données)
+		checkIn(syncActors_refresh);
+		
+	} catch (e) {
+		alert( "Une erreur est survenue à la lecture de la liste acteurs sharepoint : " + e.message
+			+ "\n vérifiez à tout hasard le fichier de configuration interfaceConfig.js ou votre liste sharepoint \n "
+		);
+	}
+}
+
+function retrieveActorsList_refresh_taxonomy() {  // Initialisation de l'array multitableau
+
+	checkIn();
+	try {
+		g_actorsTermsFullLoadCount = ACTORSSUBSET_ID.length;
+
+		for (var i in ACTORSSUBSET_ID) {
+			getActorsByTermsID(i); // asynchrone !
+		}
+		waitUnitTermsareFullyLoaded(); // appelle la fonction en paramètre quand fini
+
+	} catch (e) {
+		alert(e);
+	}
+}
 
 function waitUnitTermsareFullyLoaded(donefnct) {
 	// Attendre la fin des process iObeya avant de faire le commit Sharepoint
@@ -89,7 +209,7 @@ function waitUnitTermsareFullyLoaded(donefnct) {
 // dans un contexte javascript
 
 function getActorsByTermsID(subsetiDid){
-	
+
 	var l_array=[];
 	var boardname 		= BOARDSTOSYNC[subsetiDid];
 	var context 		= SP.ClientContext.get_current();
@@ -110,7 +230,7 @@ function getActorsByTermsID(subsetiDid){
 							var l_term =terms.getItemAtIndex(i);
 							l_array.push(l_term.get_name());
 						}
-			g_actorsTermsListTable[subsetiDid]=l_array;	
+			g_actorsTermsListTable[BOARDSTOSYNC[subsetiDid]]=l_array;	 // TODO: FIX à vérifier que cela fonctionne toujours
 			g_actorsTermsFullLoadCount--;
 			
 			}, function(sender,args){
@@ -118,9 +238,8 @@ function getActorsByTermsID(subsetiDid){
 			});
 
 	} catch(e) {
-		alert("erreur: " +e.message);
-		console.log(e.message);
-		}
+		alert(e);
+	}
 		
 	return l_array; // ne devrait pas passer ici...
 }
@@ -143,7 +262,7 @@ function getActorsByTermsID(subsetiDid){
 function syncActors_refresh(iObeyaNodes) {
 	var rollObject, labelList, labelsToCreate,labelsToCreate,newLabel,ridaFormatedObject;
 
-	try {
+	/*try {*/
 		
 		labelsToCreate = []; // objet vidé
 		
@@ -172,7 +291,7 @@ function syncActors_refresh(iObeyaNodes) {
 			
 			// 2) Liste des nouvelles étiquettes à placer
 
-			var _obj = g_actorsTermsListTable[i]; // l'array d'array() récupérés de sharepoint
+			var _obj = g_actorsTermsListTable[BOARDSTOSYNC[i]]; // l'array d'array() récupérés de sharepoint
 			
 			if (_obj) // /!\ peux etre nul / vide... on protère la boucle
 				for (var id in _obj) {
@@ -192,12 +311,19 @@ function syncActors_refresh(iObeyaNodes) {
 						ridaFormatedObject = getRidaFormatedObject(_actor,BOARDSTOSYNC[i]);
 						newLabel = createActorLabel(ridaFormatedObject);
 
+						if (!newLabel)
+								var debug= true;
+						
 						// Placer le label
 						iObeyaNodes.push(newLabel); // on ajouter le label dans l'array pour le placement (en mémoire)
 						
 						newLabel = new placeElement(rollObject, newLabel, RESOURCES_ZONE, iObeyaNodes, Array()); // positionne le label
-
-						labelsToCreate.push(newLabel); // on ajouter le label dans iObeya (déplacé...)
+						
+						if (!newLabel)
+								var debug= true;
+						
+						if (newLabel)
+							labelsToCreate.push(newLabel); // on ajouter le label dans iObeya (déplacé...)
 							
 						}//if (actorFound === false)
 				} //for (var id in g_actorsTermsListTable) {
@@ -213,10 +339,10 @@ function syncActors_refresh(iObeyaNodes) {
 				}
 			waitUnitCommitDone4closingWindows(); // on attend que l'ensemble de la queue de commit iObeya est vidée
 		
-	} catch (e) {
+	/*} catch (e) {
 		// On informe l'utilisateur de la raison si l'erreur
-		displayException(e);
-    }
+		alert(e);
+    }*/
 	
 	
 	// On crée un objet Actor de type rida avec le minimum vital pour créer un label
@@ -245,5 +371,6 @@ function waitUnitCommitDone4closingWindows() {
 		}
 	}, 1000);
 }
+	
 	
 	

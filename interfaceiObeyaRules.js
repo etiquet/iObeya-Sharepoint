@@ -95,9 +95,6 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 		lastDate = Math.max(lastDate, iObeyaObject.modificationDate);
 	}
 	
-	if (iObeyaObject.creationDate !== iObeyaObject.modificationDate)
-		flagdebug=1;
-	
 	// Eléments superposés
     iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
 	
@@ -119,9 +116,11 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
  */
  
 /*** Détermine l'emplacement où doit se trouver l'élément iObeya ainsi que ceux qui le chevauchent ***/
+// TODO cette fonction est à reprendre sur le placement
+
 
 function placeElement(rollObject, element, status, nodesiObeya, overLappingElements) {
-    var lastZOrder, displayType, i;
+    var lastZOrder, displayType, i,limitcatch=false;
     try {
 		// Initialisation position
 		if (isNaN(element.x)) { element.x = 0; }
@@ -166,7 +165,18 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 		
     	if (displayType === display_list) {
     		var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
-	    	while (elementsInRectangle.length > 0 && Y + realHeight < limit.Y) {
+			
+			// on supprime tous les éléments de l'array qui ne sont pas sur le board cible
+			
+			for (elmt in elementsInRectangle){
+				if (elementsInRectangle[elmt].boardid != element.boardid){
+					elementsInRectangle.splice(elmt,1)
+					}
+			}
+
+	    	while (elementsInRectangle.length > 0 
+				   && Y + realHeight < limit.Y
+				  ) {
 	    		var otherNote = elementsInRectangle[0];
 
 	    		// Nouveau X
@@ -209,8 +219,9 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	    }
 		
 	    if (Y+realHeight >= limit.Y) {
-	    	// Erreur
-	    	throw new InterfaceException("Il n'y a plus de place disponible pour afficher un élément au statut \"" + status + "\".");
+			Y= limit.Y -realHeight ; // on scotche les objects à la limite
+			X++;
+			limitcatch=true;
 	    }
 	    
 	    // Récupération des marges dues à la position occupée par les éléments qui chevauchent le post-it
@@ -326,11 +337,14 @@ function getZoneLimit(rollObject) {
 /*** Retourne le statut de la tâche passée en paramètre ***/
 function findNoteStatus(iObeyaNote, nodesiObeya){
 
-	var result = {"rollObject":null, "status":DROP_ZONE};
+	var result = {"rollObject":null, "status":""}; // par défaut si un post-it n'est pas positionné on laisse le champs vide.
 
 	for (var id = 0; id < nodesiObeya.length; id++){
 		var iObeyaObject = nodesiObeya[id];  
-		if (iObeyaObject['@class'] ==="com.iobeya.dto.BoardRollDTO") {
+		if (
+			iObeyaObject['@class'] ==="com.iobeya.dto.BoardRollDTO" 
+		    && iObeyaObject.boardid ===  nodesiObeya[id].boardid		
+		   ) {
 			// On regarde si le centre du post-it appartient à la zone
 			var chk1 = isPointInRectangle(iObeyaNote.x+iObeyaNote.width/2, iObeyaNote.y+iObeyaNote.height/2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x+iObeyaObject.width, iObeyaObject.y+iObeyaObject.height);
 			if (chk1) {

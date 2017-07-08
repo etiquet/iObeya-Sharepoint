@@ -27,18 +27,36 @@
 	<script type="text/javascript" src="interfaceSynciObeya.js"></script>
 	<script type="text/javascript" src="interfaceRefreshActors.js"></script>
 	<script type="text/javascript" src="interfaceCRUD.js"></script>
-
+	<script type="text/javascript" src="interfaceGetitems.js"></script>
 	<script type="text/javascript">
 		
 		$(document).ready(function(){   
+			
+			function $_GET(param) {
+					var vars = {};
+					window.location.href.replace( location.hash, '' ).replace( 
+						/[?&]+([^=&]+)=?([^&]*)?/gi, // regexp
+						function( m, key, value ) { // callback
+							vars[key] = value !== undefined ? value : '';
+						}
+					);
+
+					if ( param ) {
+						return vars[param] ? vars[param] : null;	
+					}
+					return vars;
+				}
+
 			//on s'assure d'avoir loadé toutes les librairies nécessaires
 
 			// Récupération de la liste des acteurs ( taxonomie sharepoint)
 			// execute des queries sharepoints asysnchrones, compliqué à gérer
-			
-			retrieveActorsList_refresh();
 
+			// On récupère le referer ainsi que l'appel
+			var $_GET = $_GET();
+			retrieveActorsList_refresh($_GET['boardname']);
 		});
+		
 	</script>
 </head>
 
@@ -47,7 +65,7 @@
         <SharePoint:FormDigest ID="FormDigest1" runat="server"></SharePoint:FormDigest>
     </form>
 
-	Rafraîchissement en cours, veuillez patienter...
+	Chargement des acteurs en cours, veuillez patienter...
 	
 </body>
 
