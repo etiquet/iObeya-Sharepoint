@@ -55,6 +55,7 @@ le site suivant semble propose des méthodes pour aider ... à comprendre
 var g_actorsTermsListTable = [];// multi tableau
 var g_actorsTermsFullLoadCount=0;// pour être sûr d'avoir tout loadé...
 var g_countl=0;// pour être sûr d'avoir tout loadé...
+var g_panneauname; // le nom du panneau qui doit être propagé à la fonction  syncActors_refresh(iObeyaNodes)
 
 function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multitableau
 
@@ -79,10 +80,12 @@ function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multi
 			
 			if (SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC instanceof Array ){
 				for (arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
-					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr]) ) // not an array
+					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr]) ) //  an array
 							syncID=entry;
+							g_panneauname=panneau;
 			} else if (panneau.includes(SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC) ) // not an array
 					syncID=entry;
+					g_panneauname=panneau;
 			}
 			
 		
@@ -266,7 +269,9 @@ function syncActors_refresh(iObeyaNodes) {
 		
 		labelsToCreate = []; // objet vidé
 		
-		for (var i in BOARDSTOSYNC){
+		//for (var i in BOARDSTOSYNC){ // TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
+		
+	
 			// Pour l'adaptation multipanneaux
 			// 2 nouvelles variables à utiliser :
 				//	g_actorsTermsListTable[i]
@@ -276,9 +281,12 @@ function syncActors_refresh(iObeyaNodes) {
 			
 
 			/* // on récupère le l_boarid depuis getBoardidFromName (l'ordre de g_iO_boards[i] n'est pas identique à celui de BOARDSTOSYNC[i] , il faut faire un lookup.)*/
-			
-			var l_boarid=getBoardidFromName(BOARDSTOSYNC[i]); 
-			
+			//var l_boarid=getBoardidFromName(BOARDSTOSYNC[i]);/ TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
+			//debugger;
+			var l_boarid=getBoardidFromName(g_panneauname);  // uniquement le panneau sélectionné
+	
+
+	
 			// le roll ressources lié au panneau
 			rollObject = findRollbyLabelName(iObeyaNodes, RESOURCES_ZONE,l_boarid); 
 			
@@ -291,7 +299,7 @@ function syncActors_refresh(iObeyaNodes) {
 			
 			// 2) Liste des nouvelles étiquettes à placer
 
-			var _obj = g_actorsTermsListTable[BOARDSTOSYNC[i]]; // l'array d'array() récupérés de sharepoint
+			var _obj = g_actorsTermsListTable[g_panneauname]; // l'array d'array() d'acteurs
 			
 			if (_obj) // /!\ peux etre nul / vide... on protère la boucle
 				for (var id in _obj) {
@@ -308,7 +316,7 @@ function syncActors_refresh(iObeyaNodes) {
 
 					if (_actorFound === false) { // on créé ici le label dans le roll
 						// Créer le label
-						ridaFormatedObject = getRidaFormatedObject(_actor,BOARDSTOSYNC[i]);
+						ridaFormatedObject = getRidaFormatedObject(_actor,g_panneauname);
 						newLabel = createActorLabel(ridaFormatedObject);
 
 						if (!newLabel)
@@ -330,7 +338,7 @@ function syncActors_refresh(iObeyaNodes) {
 				
 				g_rollsToRefresh.push(rollObject); // on ajoute le roll dans la liste des rolls à m.a.j
 
-			} // for (var i in g_iO_boards){
+			//} // for (var i in g_iO_boards){ / TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
 		
 			// On créer les nouveaux labels
 			if (labelsToCreate.length > 0) { 
@@ -368,6 +376,7 @@ function waitUnitCommitDone4closingWindows() {
 			console.log("Commit iObeya are done : closing windows");
 			clearInterval(timerId);
 			close();
+			//alert("fini");
 		}
 	}, 1000);
 }
