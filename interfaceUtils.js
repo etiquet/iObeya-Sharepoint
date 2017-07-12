@@ -13,6 +13,13 @@ function InterfaceException(message) {
     this.name = "InterfaceException";
 }
 
+/*** Affichage d'une exception ***/
+function displayException(e) {
+	alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
+	console.log(e.message);
+}
+
+
 /**
  * Formatage de données
  */
@@ -105,7 +112,6 @@ function parseDate(date) {
 										return day +"/" + month +"/" + year.toString();
 									}
 						// else
-
 						return -1; // erreur sur le format; 
 					}
 				}
@@ -113,7 +119,6 @@ function parseDate(date) {
 	
 	// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
 		//.getFullYear()
-
 	switch(l_date.length){
 		
 		case 3:
@@ -161,10 +166,8 @@ function parseDate(date) {
 		
 		default: // pas une bonne date
 			return -1; // erreur sur le format.
-        break;	
-
+        break;
 	}
-	
 }
 
 
@@ -200,13 +203,12 @@ function filterNumbers(workload) { // ne garde que les digits et ,
 
 /*** Erreur d'une requête Sharepoint asynchrone ***/
 function onQueryFailed(sender, args) {
-	var msg = 'Request failed. ' + args.get_message() + '\n' + args.get_stackTrace();
-	alert(msg);
-	console.log(msg);
+	displayException(new InterfaceException(
+		'Request failed. ' + args.get_message() + '\n' + args.get_stackTrace()
+	));
 	// Réactivation du bouton
 	enableButton();
     lockSync = false;
-	window.location.reload() ; // rafraichi la page après l'erreur
 }
 
 

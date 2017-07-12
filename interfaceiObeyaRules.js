@@ -83,6 +83,16 @@ function getAssociatedPrioritySticker(overlappingElements) {
 	return null;
 }
 
+/*** Retourne le sticker "Escallation" associé au post-it ***/
+function getAssociatedEscallationSticker(overlappingElements) {
+	for (var i in overlappingElements) {
+		if (isEscallation(overlappingElements[i])) {
+			return overlappingElements[i];
+		}
+	}
+	return null;
+}
+
 /*** Retourne la date de dernière modification d'un post-it et des éléments qui le chevauchent ***/
 function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 	var lastDate = null, iObeyaOverlapping, i, flagdebug;
@@ -95,6 +105,9 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 		lastDate = Math.max(lastDate, iObeyaObject.modificationDate);
 	}
 	
+	if (iObeyaObject.creationDate !== iObeyaObject.modificationDate)
+		flagdebug=1;
+
 	// Eléments superposés
     iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
 	
