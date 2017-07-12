@@ -62,6 +62,7 @@ var todo_syncRida = 4;
 var todo_removeiObeya = 5;
 var todo_removeRida = 6;
 var todo_moveBoardiObeya = 7;
+var todo_cloneiObeya = 8;
 
 var status_todo = 0x10;
 var status_done = 0x20;
@@ -115,19 +116,17 @@ function startSync(syncID) { // fonction appelée depuis le bouton iObeya
 	try {
 		if(!syncID){
 			console.log("Pas de jeu de paramètres donné, on prend la valeur par défaut");
-		 	// on recherche la liste selon le titre de la page 
 
+		 	// on recherche la liste selon le titre de la page
 			var wname = window.document.title ;
 			for (entry in SYNC_PROPERTIES_MAP){
 				if (wname.includes(SYNC_PROPERTIES_MAP[entry].LISTSHAREPOINT_TITLE) )
 					syncID=entry;
 			}
-			
 			if (!syncID){
 				alert("Le paramètrage de synchronisation iObeya de cette n'est pas configuré,\n veuillez contactez votre administrateur");
 				return;
 			}
-			
 			g_syncID= syncID;
 		}
 		
@@ -156,8 +155,7 @@ function startSync(syncID) { // fonction appelée depuis le bouton iObeya
 	}
 	catch (e) {
 		// TODO: factoriser la gestion des erreurs
-		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-		console.log(e.message);
+		displayException(e);
 		// On informe l'utilisateur de la raison de l'erreur
 		// Réactivation du bouton
 		enableButton();
@@ -188,38 +186,31 @@ function syncNotes(iObeyaNodes){
 		// Détermination des actions à effectuer
 		// résultat dan la variable globale
 				
-	    g_syncList = compareforSyncAction(ridaNodes,iObeyaNodes, null);
+	    g_syncList = compareforSyncAction(ridaNodes,iObeyaNodes);
 	    
 	    if (g_syncList == false) {
 	    	enableButton();
             lockSync = false;
 			window.location.reload() ; // rafraichi la page après l'erreur
 	    } else {
-		    
 		      // Synchronisation
 		      g_syncList = performSyncAction(ridaNodes,iObeyaNodes,g_syncList);
 		      
 		      // Lancement des mises à jours iObeya
 			  // la suppression se fait en premier
-
-			  if (g_nodesToTrash.length > 0){
+			if (g_nodesToTrash.length > 0)
 				  	createiObeyaNodeInTrash(iObeyaNodes,g_nodesToTrash,null);
-			  }
-
 			  if (g_nodesToUpdate.length > 0)
 			  		updateiObeyaNode(g_nodesToUpdate);
 			  if (g_nodesToCreate.length > 0)
 				  createiObeyaNode(g_nodesToCreate,null);
-			
 			 if (g_syncList.length > 0)
 				 			executeCommit();// Commit changements Sharepoint
-			 
 		  }
 	}
 	catch (e) {
 		// On informe l'utilisateur de la raison de l'erreur
-		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-		console.log(e.message);
+		displayException(e);
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
@@ -229,17 +220,16 @@ function syncNotes(iObeyaNodes){
 
 /*** Crée la liste des objets à synchroniser ***/
 function compareforSyncAction(nodesRida, nodesiObeya){
-
-	var loc_synclist = [];
+	var l_synclist = [];
 	var iObeyaObject;
 	var ridaObject;
 	var syncObject;
 	
 	try {
-		// Parcours RIDA puis iObeya	
+		// Parcours RIDA pour comparaison avec l'état actuel de iObeya
 		for (var inRida=0; inRida < nodesRida.length; inRida++){ // boucle éléments du rida
 			syncObject = null;
-			ridaObject = nodesRida[inRida]; // 
+			ridaObject = nodesRida[inRida];
 			iObeyaObject = getiObeyaObjectById(nodesiObeya, ridaObject.idiObeya);
 			
 			if (ridaObject.synchroiObeya === undefined) {
@@ -253,37 +243,36 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 				if (ridaObject.synchroiObeya == true && ridaObject.status != DELETED_STATUS) {
 					if (ridaObject.idiObeya == null || ridaObject.idiObeya == ""){
 						// Cas n°1 : création d'un nouveau post-it dans iObeya
-						syncObject = getSyncObject(todo_createiObeya, ridaObject.idRida, -1, status_todo);   
+						l_synclist = addSyncObject(l_synclist, todo_createiObeya, ridaObject.idRida, -1, status_todo);
 					}
 					else {
 						// Cas n°2 : désynchronisation de la tâche RIDA
-						syncObject = getSyncObject(todo_removeRida, ridaObject.idRida, -1, status_todo);
+						l_synclist = addSyncObject(l_synclist, todo_removeRida, ridaObject.idRida, -1, status_todo);
 					}
 				}
 			}
 			else {
-				noteModificationDate = getNoteLastModificationDate(iObeyaObject, nodesiObeya);
+				var noteModificationDate = getNoteLastModificationDate(iObeyaObject, nodesiObeya);
 
 				if (ridaObject.synchroiObeya == true && ridaObject.status != DELETED_STATUS
 					&& (ridaObject.modificationDate == null || noteModificationDate == null || (Math.abs(ridaObject.modificationDate - noteModificationDate) > TOLERANCEINTERVAL))
 					) {
 						if (ridaObject.modificationDate > noteModificationDate) {
 							// Cas n°3 : mise à jour iObeya
-							syncObject = getSyncObject(todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);				
+						l_synclist = addSyncObject(l_synclist, todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
 						}
 						else {
 							// Cas n°4 : mise à jour RIDA
-							syncObject = getSyncObject(todo_syncRida, ridaObject.idRida, iObeyaObject.id, status_todo);
+						l_synclist = addSyncObject(l_synclist, todo_syncRida, ridaObject.idRida, iObeyaObject.id, status_todo);
+						if (needEscallation(iObeyaObject, nodesiObeya)) {
+							l_synclist = addSyncObject(l_synclist, todo_cloneiObeya, -1, iObeyaObject.id, status_todo);
+						}
 						}
 				}
 				else if (ridaObject.status == DELETED_STATUS || ridaObject.synchroiObeya == false) {
 					// Cas n°5 : passage du post-it en corbeille
-					syncObject = getSyncObject(todo_removeiObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
+					l_synclist = addSyncObject(l_synclist, todo_removeiObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
 				}
-			}
-			
-			if (syncObject != null) {
-				loc_synclist.push(syncObject);
 			}
 		}
 		
@@ -295,8 +284,6 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 				- déplacement d'une note dans un autre tableau ( possibilité nouvelle en multipanneau )
 				- le cas ou on bouge un post-it sur les panneaux (ex: via la création / suppresssion ou bien via la zone d'échange ) est traité naturellement.
 		*/
-		
-		
 		for (var iniObeya=0; iniObeya < nodesiObeya.length; iniObeya++){
 			iObeyaObject = nodesiObeya[iniObeya];
 			
@@ -304,28 +291,28 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 				syncObject = null;
 		  		ridaObject = getRidaObjectByiObeyaId(nodesRida, iObeyaObject.id);
 							
-				if (ridaObject == null) { // Cas n°7 : création de tâche dans RIDA
-		  			syncObject = getSyncObject(todo_createRida, -1, iObeyaObject.id, status_todo);
-		  			loc_synclist.push(syncObject);
-		  		
+				// Cas n°7 : création de tâche dans RIDA
+				if (ridaObject == null) {
+					l_synclist = addSyncObject(l_synclist, todo_createRida, -1, iObeyaObject.id, status_todo);
 				} else {
-					
-
-					if ( ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase() ){ // Cas n°9 : déplacement de panneau
+					// Cas n°9 : déplacement de panneau
+					if (ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase()) {
 						var found=false;
 						
-						for (var loop in loc_synclist ){ // on regarde si l'idiObeya n'est pas déjà dans la synclist (cela devrait être le cas...)
-							if (loc_synclist[loop].idRida == ridaObject.idRida ){
-								loc_synclist[loop].action=todo_moveBoardiObeya; // oui, on le flag juste pour deplacement de panneau
+						for (var loop in l_synclist) {
+							// on regarde si l'idiObeya n'est pas déjà dans la synclist (cela devrait être le cas...)
+							if (l_synclist[loop].idRida == ridaObject.idRida) {
+								// oui, on le flag juste pour deplacement de panneau
+								l_synclist[loop].action = todo_moveBoardiObeya;
 								found=true;
 								console.log("Déplacement de panneau trouvé : on change l'action de synchro");
 							}		
 						}
-						
-						if (!found){ // l'objet n'a pas été trouvé dans la liste, on l'ajoute pour supression supprime (ce code ne devrait jamais être activé...)
-								syncObject = getSyncObject(todo_moveBoardiObeya, ridaObject.idRida, iObeyaObject.id, status_todo);	// on crée un nouvel objet dans la liste
-								loc_synclist.push(syncObject);
-								console.log("Etrange : l'objet iObeyaObject n'a pas été trouvé dans loc_synclist, ajout d'une entrée");
+						// L'objet n'a pas été trouvé dans la liste, on l'ajoute pour supression supprime (ce code ne devrait jamais être activé...)
+						if (!found) {
+							// On crée un nouvel objet dans la liste
+							l_synclist = addSyncObject(l_synclist, todo_moveBoardiObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
+							console.log("Etrange : l'objet iObeyaObject n'a pas été trouvé dans l_synclist, ajout d'une entrée");
 							}						
 						} // if ( ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase() )
 					} // else if (ridaObject == null) 
@@ -333,7 +320,7 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 			} // loop array d'objets iObeya
 		
 		// Message de confirmation
-		var stats = getStats(loc_synclist);
+		var stats = getStats(l_synclist);
 		
 		var statsMessage = "- Sens Rida > iObeya : \n\n" 
 							+ stats[todo_createiObeya] 		+ " Note(s) à créer\n" 
@@ -343,24 +330,21 @@ function compareforSyncAction(nodesRida, nodesiObeya){
 					 		+ "- Sens iObeya > Rida : \n\n" 
 							+ stats[todo_createRida] 		+ " Tâche(s) à créer\n" 
 							+ stats[todo_syncRida] 			+ " Tâche(s) à synchroniser\n" 
-							+ stats[todo_removeRida] 		+ " Tâche(s) à désactiver\n" ;
+			+ stats[todo_removeRida] + " Tâche(s) à désactiver\n"
+			+ stats[todo_cloneiObeya] + " Tâche(s) à cloner\n";
 
-		if (loc_synclist.length){
-			
-			if (confirm( 
-					"Vous avez demandé une synchronisation entre la liste Sharepoint courante et les panneaux iObeya suivants :  \n\n"
+		if (l_synclist.length) {
+			if (confirm( "Vous avez demandé une synchronisation entre la liste Sharepoint courante et les panneaux iObeya suivants :  \n\n"
 						+ BOARDSTOSYNC
 						+ ".\n\n"
 						+ statsMessage 
 						+ " \n\nSouhaitez-vous continuer ?\n\n" 
 						+ "(Liste de paramètres utilisée : "
 						+ g_syncID 
-						+ ")"
-				)) { 
+					+ ")" )) {
 					if ( !verifieActorsList_sync() ) // si la liste n'a pas été chargée à ce moment là c'est un pb
 						return false; // on sort
-						else return loc_synclist; 
-
+				else return l_synclist;
 				} else 
 					return false;
 		} else {
@@ -387,59 +371,70 @@ function performSyncAction(nodesRida, nodesiObeya, l_syncList){
 	g_nodesToTrash = [];
 	g_rollsToRefresh = [];
 
-	var iObeyaOverlapping;
-	
-	
 	for (var idSync in l_syncList){
     	var syncObject = l_syncList[idSync];
     	
+		var clonediObeyaNode = null;
+		var iObeyaOverlapping = null;
+		var l_uid = null;
+		var result = null;
+		var iObeyaToRemove = null;
+		var iObeyaObject = null;
+		var ridaObject = null;
+
     	if (syncObject.idRida != -1) {
-	    	var ridaObject = getRidaObjectByRidaId(nodesRida, syncObject.idRida);
+			ridaObject = getRidaObjectByRidaId(nodesRida, syncObject.idRida);
     	}
-    	var iObeyaOverlapping = null;
     	if (syncObject.idiObeya != -1) {
-	    	var iObeyaObject = getiObeyaObjectById(nodesiObeya, syncObject.idiObeya);
+			iObeyaObject = getiObeyaObjectById(nodesiObeya, syncObject.idiObeya);
 	    	iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
     	}
 
 		try {
 		    switch (syncObject.action){
 					
+				case todo_cloneiObeya: // Mélange entre create{iObeya,Rida}
+					//----   /!\ Copie de todo_createRida   ----
+					result = createRida(iObeyaObject, nodesiObeya);
+					syncObject.status = status_nil;
+					if (iObeyaObject.toreupdate != undefined) {
+						g_nodesToUpdate.push(iObeyaObject);
+					}
+					//------------------------------------------
+					// Pas de break, on enchaine sur une procédure de création classique
+					// L'objet iObeya sera normalement cloné, car syncObject.idiObeya != null
+					// donc iObeyaObject != null
+
 		    	case todo_createiObeya :
 					// on calcule l'UI de la nouvelle ressource
-					var rand = Math.floor(Math.random() * 1000000);
-					var l_uid = 'rida_' + Math.round(new Date().getTime()) +'.' + rand;
-		        	var result = createNoteIniObeya(nodesRida, nodesiObeya, ridaObject,l_uid);
+					l_uid = 'rida_' + Math.round(new Date().getTime()) +
+						'.' + Math.floor(Math.random() * 1000000);
+					result = createNoteIniObeya(nodesRida, nodesiObeya, ridaObject, l_uid, iObeyaObject);
 		        	g_nodesToCreate = g_nodesToCreate.concat(result);
 					syncObject.status = updateSyncStatus(result);
-					
 		        break;
 	
 				case todo_synciObeya :
-					var result = updateNoteIniObeya(nodesRida, nodesiObeya, ridaObject, iObeyaObject, iObeyaOverlapping);
+					result = updateNoteIniObeya(nodesRida, nodesiObeya, ridaObject, iObeyaObject, iObeyaOverlapping);
 					g_nodesToUpdate = g_nodesToUpdate.concat(result);
 					syncObject.status = updateSyncStatus(result);
 		        break;
 					
-				case todo_createRida :
-					
-			        var result = createRida(iObeyaObject, nodesiObeya);
+				case todo_createRida : // /!\ Copié dans "todo_cloneiObeya"
+					result = createRida(iObeyaObject, nodesiObeya);
 			        syncObject.status = status_nil; 
 					//syncObject.status = updateSyncStatus(result); // todo: Q: pourquoi pas de gestion du code result ?
 					
 					// forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
 					// a factoriser avec celui de create rida...
-
 					if( iObeyaObject.toreupdate != undefined ){ 
 						// TODO: écrire la fonction qui update la note iObeya depuis un objet en mémoire
 						g_nodesToUpdate.push(iObeyaObject);
 					}
-					
 		        break;
 	
 				case todo_syncRida :
-					
-					var result = updateRida(syncObject.idRida, iObeyaObject, nodesiObeya);
+					result = updateRida(syncObject.idRida, iObeyaObject, nodesiObeya);
 					syncObject.status = updateSyncStatus(result);
 					
 					// forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
@@ -448,51 +443,45 @@ function performSyncAction(nodesRida, nodesiObeya, l_syncList){
 						// TODO: écrire la fonction qui update la note iObeya depuis un objet en mémoire
 						g_nodesToUpdate.push(iObeyaObject);
 					}
-					
 				break;
 	
 		        case todo_removeiObeya :
-		        	var iObeyaToRemove = [];
+					iObeyaToRemove = [];
 		        	iObeyaToRemove.push(iObeyaObject);
 		        	if (iObeyaOverlapping != null)
 		   				iObeyaToRemove = iObeyaToRemove.concat(iObeyaOverlapping);
-		        	var result = ArrayToRemoveIniObeya(iObeyaToRemove, syncObject.idRida);
+					result = ArrayToRemoveIniObeya(iObeyaToRemove, syncObject.idRida);
 		   			g_nodesToTrash = g_nodesToTrash.concat(result);
 		        	syncObject.status = status_nil;
 		        break;
 					
-				case todo_moveBoardiObeya : // on déplace la note de tableau ( effacement / recréation )
-
+				case todo_moveBoardiObeya :
+					// on déplace la note de tableau ( effacement / recréation )
 					// on détruit (corbeille) la nouvelle note dans le tableau source (maintien de l'ide RIDA)
-					var iObeyaToRemove = [];
+					iObeyaToRemove = [];
 		        	iObeyaToRemove.push(iObeyaObject);
 					
 					// on traite les overlappings objects
 		        	if (iObeyaOverlapping != null)
 		   				iObeyaToRemove = iObeyaToRemove.concat(iObeyaOverlapping);
 					
-		        	var result = ArrayToRemoveIniObeya(iObeyaToRemove, syncObject.idRida);
+					result = ArrayToRemoveIniObeya(iObeyaToRemove, syncObject.idRida);
 		   			g_nodesToTrash = g_nodesToTrash.concat(result);
 										
 					// on créé maintenant une nouvelle note dans le tableau de destination (nouvel ID de note)
-					
-					var rand = Math.floor(Math.random() * 1000000);
-					var l_uid = 'rida_' + Math.round(new Date().getTime()) +'.' + rand;
-		        	var result = createNoteIniObeya(nodesRida, nodesiObeya, ridaObject,l_uid);
+					l_uid = 'rida_' + Math.round(new Date().getTime()) + '.'
+							+ Math.floor(Math.random() * 1000000);;
+					result = createNoteIniObeya(nodesRida, nodesiObeya, ridaObject, l_uid);
 		        	g_nodesToCreate = g_nodesToCreate.concat(result);
 					syncObject.status = updateSyncStatus(result);
-					
 		        break;
-					
-					
-	
+
 		        case todo_removeRida :
-					var result = leaveSynchroRida(syncObject.idRida);
+					result = leaveSynchroRida(syncObject.idRida);
 			        syncObject.status = status_nil;
 		        break;
 		    }
-	    }
-	    catch(e) {
+		} catch (e) {
 	    	syncObject.status = status_failed;
 	    	throw e;
 	    }
@@ -512,9 +501,7 @@ function performSyncAction(nodesRida, nodesiObeya, l_syncList){
 		   	g_allThreads = true;
 	   	}
 	}
-	
 	g_nodesToUpdate = g_nodesToUpdate.concat(g_rollsToRefresh); // g_rollsToRefresh =  forcer le rafraichissement des rolls (bug v3.3 iObeya) en plus des objets
-
 	return l_syncList;
 }
 
@@ -615,8 +602,7 @@ var response = null;
 			getRooms(syncMethod);
 		}
 		catch(e) {
-		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-		console.log(e.message);
+			displayException(e);
 			// Réactivation du bouton
 			enableButton();
 			window.location.reload() ; // rafraichi la page après l'erreur
@@ -624,9 +610,7 @@ var response = null;
 		
 	};
 	myxmlr.onerror = function () {
-		var e= "Erreur à la connection à iObeya : êtes-vous bien connecté dans un autre onglet ou fenêtre ?";
-		alert(e);
-		console.log(e);
+		displayException(new InterfaceException( "Erreur à la connection à iObeya : êtes-vous bien connecté dans un autre onglet ou fenêtre ?" ));
 		
 		// Réactivation du bouton
 		enableButton();
@@ -673,9 +657,9 @@ g_iO_activeRoom = null;
 	myxmlr.withCredentials = true;
 	
 	myxmlr.onerror = function(e) {
-		var msg = "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status;
-		alert(msg);
-		console.log(msg);
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status
+		));
 		enableButton();
         lockSync=false;
 		window.location.reload() ; // rafraichi la page après l'erreur
@@ -701,13 +685,10 @@ g_iO_activeRoom = null;
 				lockSync=false;
 				window.location.reload() ; // rafraichi la page après l'erreur
 			}
-			
 			getBoards(syncMethod); // on propage la fonction qui sera appelée à la fin...
-			
 		}
 		catch(e) {
-			alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-			console.log(e.message);
+			displayException(e);
 			// Réactivation du bouton
 			enableButton();
 			lockSync=false;
@@ -716,6 +697,8 @@ g_iO_activeRoom = null;
 		nextRequest();
 	};
 	myxmlr.send();
+
+	//startQueue();
 }
 
 /*** Récupération des boards ***/
@@ -761,6 +744,7 @@ var g_countBoardtoload; // pour gérer l'asynchronisme
 
 function getBoards(syncMethod) {
 var myxmlr = null;
+	var boardfound = 0;
 
 	console.log("Fetch boards");
 
@@ -769,18 +753,17 @@ var myxmlr = null;
 
 // TODO: remettre l'appel getJSONData ( pour permettre un fonctionnement + agnostique de l'environnement ex: navigateur ou GoogleNodejs)
 //	myxmlr = getJSONData(IOBEYAURL + "/s/j/rooms/" + g_iO_activeRoom.id + "/details");
-	
 		myxmlr= new XMLHttpRequest();
 		myxmlr.open("GET", IOBEYAURL + "/s/j/rooms/" + g_iO_activeRoom.id + "/details", true);
 		myxmlr.setRequestHeader('Content-type', 'application/json');
 		myxmlr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 		myxmlr.withCredentials = true;
 
+
 		myxmlr.onerror = function(e) {
-			var msg= "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status;
-			alert(msg);
-			console.log(msg);
-			
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status
+		));
 			// Réactivation du bouton
 			enableButton();
 			lockSync=false;
@@ -790,8 +773,8 @@ var myxmlr = null;
 		myxmlr.onload = function () {
 			try {
 				var roomElementsArray = JSON.parse(this.responseText); // la réponse donne la liste des boards				
+
 				roomElementsArray.forEach(function(elmnt) {
-					
 					if (elmnt["@class"] === "com.iobeya.dto.BoardDTO") { // filtrage par type
 						g_countBoardtoload=BOARDSTOSYNC.length; // pour gérer l'attente de fin des threads
 						BOARDSTOSYNC.forEach( function(board) {  // on récupère le contenu chaque panneaux
@@ -875,10 +858,10 @@ var myxmlr = null;
 	myxmlr.withCredentials = true;
 	
 	myxmlr.onerror = function(e) {
-		var msg = "Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/" 
-					+ l_boardid + "/details" + "\n Error Status: " + e.target.status;
-		alert(msg);
-		console.log(msg);
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/"
+												+ l_boardid + "/details" + "\n Error Status: " + e.target.status
+		));
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
@@ -959,31 +942,39 @@ var myxmlr = null;
  */
  
 /*** Création d'un post-it dans iObeya (initialisation) ***/
-
-function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
-
-    var i = 0, l_boardid =null;
+// TODO: que faire en cas de suppression du sticker lien ?
+function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj, uid, clonediObeyaNode) {
+	var l_boardid = null;
 	
 	try {
 		console.log("Création d'un nouveau post-it dans iObeya");
-		
+		var roll;
+		var escallationSticker = null;
+		var iObeyaOverlapping = null;
+		if (clonediObeyaNode) {
+			iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
+			escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
+			//Permet de récupérer le nom du tableau pour l'objet à créer
+			l_boardid = ESCALLATION_MAPPING.map[escallationSticker.name].destinationPanel;
+			// Zone d'atterrissage
+			roll = ESCALLATION_MAPPING.map[escallationSticker.name].dropZone;
+		}
+		else {
 		//Permet de récupérer le nom du tableau pour l'objet à créer
 		l_boardid=getBoardidFromRidaObj(ridaObj);
-
 		// Zone d'atterrissage
-		var roll = findRollbyLabelName(nodesiObeya, ridaObj.status,l_boardid);
+			roll = findRollbyLabelName(nodesiObeya, ridaObj.status, l_boardid);
+		}
 
-		// initialisation de la structure de la note 
-	    var newNote = {};
-		
 		// Initialisation de l'object Notes
-		
+	    var newNote = {};
 		newNote['@class'] = 'com.iobeya.dto.BoardNoteDTO';
 	    newNote.id = uid;
 	    newNote.isAnchored = false;
 	    newNote.isLocked = false;
 	    newNote.linkLabel = "";
-	    newNote.linkUrl = "";
+		// Vide, si pas la note n'est pas clonée
+		newNote.linkUrl = getLinkToContainingBoard(clonediObeyaNode) ? clonediObeyaNode : "";
 	    newNote.name = "";
 	    newNote.setName = "";
 	    if (ridaObj.creator != null)
@@ -1004,24 +995,20 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 		
 		// Place le contenu "coeur de la note" : les 4 champs visibles
 		// note : la fonction pourraient évoluer vers d'autre nature de note
-		
 	    newNote = fillNoteForiObeya(newNote, nodesRida, nodesiObeya, ridaObj); 
-		
-		
+
         // Initialisation du container  ( la note est rattachée au "containeur" du board )
-		
-		/*newNote.container = { // note ce n'est pas l'element container du board mais le elementContainer qu'il faut prendre
+		/*newNote.container = {
+		 // note ce n'est pas l'element container du board mais le elementContainer qu'il faut prendre
 	        '@class': 'com.iobeya.dto.EntityReferenceDTO',
 	        'id': elementContainer id du board, 
 	        'type': 'com.iobeya.dto.BoardDTO'
 	    };*/
-		
 		newNote.container= getBoardElementContainerFromRidaObj(ridaObj);
 
 		// l'id de la board (pas celui du container )
 		newNote.boardid = l_boardid; // cette propriété n'est pas standard dans iObeya mais nous l'utilisons pour la logique
 		newNote.boardname =getBoardNameFromRidaObj(ridaObj); // cette propriété n'est pas standard dans iObeya mais nous l'utilisons pour la logique
-		
 
         // new properties for interface v3.3
         // note: properties "props" is setted in fillNoteForiObeya
@@ -1032,21 +1019,17 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 		
         // Récupérer tous les éléments qui chevauchent le post-it
 		// on créer les autres éléments dont on a besoin ( jusqu'a 3 éléments )
-		
 	    var overlappingElements = findOverlappingElements(newNote, nodesiObeya); // retourne le besoin d'éléments superposés
-	    
 	    try {
 			newNote = placeElement(roll, newNote, ridaObj.status, nodesiObeya, overlappingElements);
-		}
-	    catch (e) {
+		} catch (e) {
 	    	alert(e.message);
 	    	return [];
 	    }
         
 	    // Etiquette du responsable
 	    var newLabel = null;
-		if (ridaObj.actor)
-	    	if (ridaObj.actor.hasOwnProperty(length)) { // check au cas où...
+		if (ridaObj.actor && ridaObj.actor.hasOwnProperty(length)) { // check au cas où...
 				newLabel = createActorLabel(ridaObj);
 				newLabel = placeLabel(newLabel, newNote);
 				nodesiObeya.push(newLabel);
@@ -1054,7 +1037,8 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 		
 	    // Sticker pourcentage achevé
 	    var newPercentage = null;
-	    if (ridaObj.percentComplete != null && PERCENTAGE_IOBEYASTICKER_MAPPING.map[ridaObj.percentComplete] != null) {
+		if (ridaObj.percentComplete != null
+				&& PERCENTAGE_IOBEYASTICKER_MAPPING.map[ridaObj.percentComplete] != null ) {
 		    newPercentage = createSticker(ridaObj, ridaObj.percentComplete, PERCENTAGE_IOBEYASTICKER_MAPPING);
 		    newPercentage = placePercentCompleteSticker(newPercentage, newNote);
 		    nodesiObeya.push(newPercentage);
@@ -1062,12 +1046,21 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 	    
 	    // Sticker priorité
 	    var newPriority = null;
-	    if (ridaObj.priority != null && PRIORITY_IOBEYASTICKER_MAPPING.map[ridaObj.priority] != null) {
+		if (ridaObj.priority != null
+				&& PRIORITY_IOBEYASTICKER_MAPPING.map[ridaObj.priority] != null ) {
 		    newPriority = createSticker(ridaObj, ridaObj.priority, PRIORITY_IOBEYASTICKER_MAPPING);
 		    newPriority = placePrioritySticker(newPriority, newNote);
 		    nodesiObeya.push(newPriority);
 	    }
  
+		// Sticker Escallation/Cloned
+		var newEscallation = null;
+		if (clonediObeyaNode
+				&& escallationSticker.hasOwnProperty('name')
+				&& ESCALLATION_MAPPING.map[escallationSticker.name] != undefined ) {
+			newEscallation = createSticker(ridaObj, escallationSticker.name, ESCALLATION_MAPPING)
+		}
+
 	    nodesiObeya.push(newNote);
 	    
 	    var elementsToCreate = [];
@@ -1078,6 +1071,8 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 	    	elementsToCreate.push(newPercentage);
 	    if (newPriority != null)
 	    	elementsToCreate.push(newPriority);
+		if (newEscallation != null)
+			elementsToCreate.push(newEscallation);
 
 	    updateRida(ridaObj.idRida, newNote, nodesiObeya); // pourquoi ?
 	    
@@ -1092,14 +1087,9 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj,uid){
 }
 
 /*** 
-
-	Mise à jour d'un post-it dans l'objet iObeya
-
-***/
-
-
+ * Mise à jour d'un post-it dans l'objet iObeya
+ **/
 function updateNoteIniObeya(nodesRida, nodesiObeya, ridaObj, iObeyaObj, iObeyaOverlapping){
-
  try {
 		console.log("Mise à jour d'un post-it dans iObeya");	
 		
@@ -1108,12 +1098,10 @@ function updateNoteIniObeya(nodesRida, nodesiObeya, ridaObj, iObeyaObj, iObeyaOv
 
 		// Mise à jour des champs de la NOTE
 		// On met à jour le contenu de la note ( par les attributs ex: container, etc...)
-		
 	    var note = fillNoteForiObeya(iObeyaObj, nodesRida, nodesiObeya, ridaObj); 
 
 		// Mise à jour (en mémoire) des éléments au dessus de la note : pourcentage, priorite, acteurs
 		// iObeyaOverlapping est un array() créé via findOverlappingElements( ); créée dans la fonction précédente
-
 		var label = manageLabelUpdate(nodesiObeya, ridaObj, note, iObeyaOverlapping);
 		var percentSticker = managePercentCompleteStickerUpdate(nodesiObeya, ridaObj, note, iObeyaOverlapping);
 		var prioritySticker = managePriorityStickerUpdate(nodesiObeya, ridaObj, note, iObeyaOverlapping);		
@@ -1122,19 +1110,16 @@ function updateNoteIniObeya(nodesRida, nodesiObeya, ridaObj, iObeyaObj, iObeyaOv
 		iObeyaOverlapping = findOverlappingElements(iObeyaObj, nodesiObeya);
 		
 	    // On gère s'il y a changement de status RIDA (donc de roll) et on modifie la position des notes dans le kanban.
-		
     	var iObeyaStatusObj = findNoteStatus(iObeyaObj, nodesiObeya);
     	var roll = findRollbyLabelName(nodesiObeya, ridaObj.status,l_boardid);
     	var move = false;
 		
-		if (ridaObj.status != iObeyaStatusObj.status) { // le status de l'objet a changé
-			
+		if (ridaObj.status != iObeyaStatusObj.status) {
+			// Le status de l'objet a changé
 		// Récupérer tous les éléments qui chevauchent le post-it
-			
 	   	try {
 			note = placeElement(roll, note, ridaObj.status, nodesiObeya, iObeyaOverlapping);
-				}	
-		catch(e) {
+			} catch (e) {
 				alert(e.message);
 				return [];
 				}
@@ -1352,7 +1337,6 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 
 						rida_field.forEach(function (value, index) {
 							// Cas de valeurs nulles non prises en compte par le test qui précède le switch
-							
 							if(ridaObj[value]){
 								data = data.concat(ridaObj[value]).trim(); // TODO ERIC : ajouté trim pour nettoyer les whitespaces
 								cntconcat++; 
@@ -1363,7 +1347,6 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 							if (rida_field[index + 1])
 								data = data.concat(concatString);
 						 });
-						
 						// si l'ensemble des colonnes sharepoint sont vides on supprime le texte
 						if (!cntconcat) 
 								data="";
@@ -1392,7 +1375,6 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 		// On vient de construire la donnée à mettre dans le champ iObeya
 		// Dans l'arbre de l'objet iObeya, on récupère le parent de l'objet à modifier
 		// (on a aussi besoin d'un pointeur)
-		
 		var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
 		
 		if ( iObeyaPartPtr){ // on vérifie que la propriété existe
@@ -1401,17 +1383,38 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 			// TODO + FIXME : lors de la création d'une note la propriété peut ne pas exister car par exemple props peux être absent...
 			var debug=true;
 		}
-
-
 	}
 }
 
+/**
+ * Retourne un booléen si l'objet iObeyaObject a besoin d'être cloné/'escallated' ou non.
+ * 'Non', si il l'a déjà été ou s'il n'a pas de sticker associé
+ * @param iObeyaObject: object iObeya à tester
+ * @param nodesiObeya: ensemble des noeuds iObeya
+ * @returns {boolean}
+ */
+function needEscallation(iObeyaObject, nodesiObeya) {
+	var escallation = false;
+	// Parmis les éléments qui recouvrent la note, ...
+	var iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
+	// ... on regarde si on a un sticker d'escalade dessus
+	var escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
+	if(escallationSticker) {
+		// Si c'est le cas, on cherche la note liée, si elle existe
+		for(var node in nodesiObeya) {
+			if ( node.hasOwnProperty('linkUrl') && node.linkLabel ) {
+				return false;
+	}
+}
+	}
+	// Si on n'a pas trouvé de note avec le bon lien associé, il faut cloner
+	return true;
+}
 
 
 /*** Création d'une étiquette "Responsable" dans iObeya (initialisation) ***/
 function createActorLabel(ridaObj) {
 	try {
-
 		var l_boardid=getBoardidFromRidaObj(ridaObj);
 		
 		var newLabel = {};
@@ -1464,8 +1467,6 @@ function updateActorLabel(label, ridaObj) {
 
 /*** Remplissage des propriétés d'une étiquette "Responsable" dans iObeya ***/
 function fillActorLabel(label, ridaObj) {
-	
-
 	try{
 		if (ridaObj.actor.hasOwnProperty(length)) { // on vérifie au cas où...
 				label.contentLabel = ridaObj.actor;
@@ -1474,7 +1475,6 @@ function fillActorLabel(label, ridaObj) {
 			label.contentLabel = "/!\\Content type";
 			console.log("FillActorLabel: contenttype not text");
 	}
-	
 	try {		
 	   	if (ridaObj.modifier != null)
 	   		label.modifier = ridaObj.modifier;
@@ -1576,13 +1576,15 @@ function fillSticker(sticker, ridaObj, value, stickerMapping) {
 
 /*** Retourne la tâche de synchronisation demandée ***/
 
-function getSyncObject(action, idRida, idiObeya, status) {
+function addSyncObject(synclist, action, idRida, idiObeya, status) {
 
 	var syncObject = {};  
 	syncObject.action = action;
 	syncObject.idRida = idRida;
 	syncObject.idiObeya = idiObeya;
 	syncObject.status = status ; 
+
+	synclist.push(syncObject);
 	return syncObject;
 }
 
@@ -1723,6 +1725,15 @@ function getBoardElementContainerFromRidaObj(ridaObj){
 	return g_iO_boards[g_defaultboard_index].elementContainer;  // valeur par défaut.
 }
 
+function getLinkToContainingBoard(iObeyaObject, nodesiObeya) {
+	// Parmis les éléments qui recouvrent la note, ...
+	var iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
+	// On trouve le sticker d'escalade qui est dessus
+	var escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
+	// On récupère la couleur du sticker d'escallation
+	var color = escallationSticker.name;
+	return IOBEYAURL + ESCALLATION_MAPPING.map[color].boardUrl + iObeyaObject.boardname
+}
 
 /***
  * A partir de 'propertyName', qui est une clé de la structure 'IOBEYANOTE_MAPPING',
@@ -1843,7 +1854,8 @@ function onUpdateQuerySucceeded() {
 						+ stats[todo_moveBoardiObeya]  	+ " Note(s) changée(s) de panneau\n\n" 
 					 	+ "- Send iObeya > RIDA : \n\n" 
 						+ stats[todo_createRida] 	+ " Tâche(s) créée(s)\n" 
-						+ stats[todo_syncRida]  	+ " Tâche(s) synchronisée(s)\n" 
+						+ stats[todo_cloneiObeya] 	+ " Tâche(s) clonée(s)\n\n"
+						+ stats[todo_syncRida]  	+ " Tâche(s) synchronisée(s)\n"
 						+ stats[todo_removeRida] 	+ " Tâche(s) désactivée(s)\n\n" 
 						+ "- Erreurs : \n\n" 
 						+ g_syncErrors 	+ " erreur(s) de synchronisation " ;
@@ -1866,6 +1878,7 @@ function getStats(array) {
 	stats[todo_removeiObeya] = 0;
 	stats[todo_removeRida] = 0;
 	stats[todo_moveBoardiObeya] = 0;
+	stats[todo_cloneiObeya] = 0;
 
 	for (var i=0; i < array.length; i++) {
 		stats[array[i].action]++;
@@ -1917,7 +1930,7 @@ function refreshTable() {
 function retrieveActorsList_sync() { 
 	
 	if (window.hasOwnProperty('ACTORLIST_TITLE')) // 
-		retrieveActorsList_sync_splist()
+		retrieveActorsList_sync_splist();
 	else 
 		retrieveActorsList_sync_taxonomy() ;
 	
@@ -1965,8 +1978,8 @@ function onGetQuerySucceededActorslist(sender, args) {
         listItemEnumerator = g_collListItem2.getEnumerator();
 		g_retrieveactorListStatus= "parsing";
 		console.log(g_retrieveactorListStatus);
+
 	    while (listItemEnumerator.moveNext()) {
-			
 			fields = listItemEnumerator.get_current().get_fieldValues();
 			actorname =formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["actor"]]).trim();
 			panneauactor =formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["PanneauiObeya"]]).trim();
@@ -1981,25 +1994,22 @@ function onGetQuerySucceededActorslist(sender, args) {
 				g_retrieveactorListStatus+=".";
 				console.log(g_retrieveactorListStatus);
 				}
-				
 			if (panneauactor)	// on ajoute l'entrée aux listes dédiées par panneau
-				for(var panneau in g_actorsTermsListTable)
-						if (panneauactor.toLocaleLowerCase() === panneau.toLocaleLowerCase()){ // s'il n'est pas dans la liste on ne le traite pas
+				for (var panneau in g_actorsTermsListTable) {
+					if (panneauactor.toLocaleLowerCase() === panneau.toLocaleLowerCase()) // s'il n'est pas dans la liste on ne le traite pas
 							g_actorsTermsListTable[panneau].push(actorname);
 						}
 			}// while
 	} catch (e) {
-			var msg = "Une erreur est survenue à la lecture de la liste acteurs sharepoint : " + e.message
+		displayException(new InterfaceException(
+			"Une erreur est survenue à la lecture de la liste acteurs sharepoint : " + e.message
 								  	+"possiblement une des propriétés de la liste \"ACTORLIST_MATCHINGNAME\" n'a pas été trouvée."
-									+"\n vérifiez à tout hasard le fichier de configuration interfaceConfig.js ou votre liste sharepoint \n ";
-		
-			alert(msg);
-			console.log(msg);
+			+ "\n vérifiez à tout hasard le fichier de configuration interfaceConfig.js ou votre liste sharepoint \n "
+		));
 			enableButton();// Réactivation du bouton
 			lockSync=false;
 			window.location.reload() ; // rafraichi la page après l'erreur
 	}
-	
 		g_retrieveactorListStatus= "done";
 		console.log(g_retrieveactorListStatus);
 }
@@ -2029,9 +2039,10 @@ function retrieveActorsList_sync_taxonomy() {
 				currentTerm = termsEnumerator.get_current(); // object sharepoint taxonomie
 				g_actorsTermsList.push(currentTerm);
 				}
-			}), Function.createDelegate(this, function (sender, args) { alert('The error has occured: ' + args.get_message()); }));
+	}), Function.createDelegate(this, function (sender, args) {
+		alert('The error has occured: ' + args.get_message());
+	}));
 }
-
 
 //TODO : faire un timer car la fonction à besoin de + de temps pour s'executer. ( fct asynchrone... selon query sharepoint)
 

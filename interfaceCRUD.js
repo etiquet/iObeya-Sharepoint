@@ -190,8 +190,7 @@ function commitiObeyaChanges(afterCommit, idNoteiObeya) {
 
 	}
 	catch(e) {
-		alert("Erreur lors de la synchronisation Sharepoint/iObeya :\n" + e.message);
-		console.log(e.message);
+		displayException(e);
 	}
 }
 
@@ -208,22 +207,8 @@ function createRida(iObeyaNote, nodesiObeya) {
 		var itemCreateInfo = new SP.ListItemCreationInformation();
 		var oListItem = oList.addItem(itemCreateInfo);
 		
-		// Récupérer les objets qui chevauchent le post-it
-	    var iObeyaOverlapping = findOverlappingElements(iObeyaNote, nodesiObeya);
-		var iObeyaLabel = getAssociatedLabel(iObeyaOverlapping);
-		var iObeyaPercentCompleteSticker = getAssociatedPercentCompleteSticker(iObeyaOverlapping);
-		var iObeyaPrioritySticker = getAssociatedPrioritySticker(iObeyaOverlapping);
-
-		g_count4debug++;
-		if (g_count4debug ==138)
-			var debug = true;
-		
-	    // Extraire les champs de l'objet note puis des étiquettes et stickers associés à des données RIDA
-	    oListItem = getNoteProperties(oListItem, iObeyaNote, nodesiObeya);
-	    oListItem = getLabelProperties(oListItem, iObeyaLabel);
-	    oListItem = getPercentCompleteStickerProperties(oListItem, iObeyaPercentCompleteSticker);
-	    oListItem = getPriorityStickerProperties(oListItem, iObeyaPrioritySticker);
-		
+		// Préparatifs communs à la mise à jour d'un élément RIDA
+		oListItem = prepareOListItem(oListItem, iObeyaNote, nodesiObeya);
 		// Date de création
 		oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], new Date(iObeyaNote.creationDate));
 		// On modifie la date de modification car sinon les notes vont être resynchronisées dans l'autre sens
@@ -231,16 +216,11 @@ function createRida(iObeyaNote, nodesiObeya) {
 		
 		// Synchronisé avec iObeya : Oui
 		oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], synchro_status_done);
-		
-		//Nom du tableau sur lequel est la note
-		
-        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
 
 	    oListItem.update();
 		g_clientContext.load(oListItem);
     
-    	console.log("Create RIDA " + iObeyaNote.id);   
-	
+    	console.log("Create RIDA " + iObeyaNote.id);
 	    return true;
 	}
 	catch(e) {
@@ -254,34 +234,44 @@ function updateRida(ridaId, iObeyaNote, nodesiObeya) {
 	try {
 	    var oListItem = oList.getItemById(ridaId);
 	    
+		// Préparatifs communs à la création d'un élément RIDA
+		oListItem = prepareOListItem(oListItem, iObeyaNote, nodesiObeya);
+
+		oListItem.update();
+		console.log("Update RIDA sur l'id iObeya :" + iObeyaNote.id);
+		return true;
+	}
+	catch (e) {
+		throw e;
+	}
+}
+
+/*** Étapes communes à la création et mise à jour d'un élément RIDA à partir d'iObeya */
+function prepareOListItem(oListItem, iObeyaNote, nodesiObeya) {
+
 	    // Récupérer les objets qui chevauchent le post-it
 	    var iObeyaOverlapping = findOverlappingElements(iObeyaNote, nodesiObeya);
 		var iObeyaLabel = getAssociatedLabel(iObeyaOverlapping);
 		var iObeyaPercentCompleteSticker = getAssociatedPercentCompleteSticker(iObeyaOverlapping);
 		var iObeyaPrioritySticker = getAssociatedPrioritySticker(iObeyaOverlapping);
+	var iObeyaEscallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
 
 	    // Extraire les champs de l'objet note puis des étiquettes et stickers associés à des données RIDA
 	    oListItem = getNoteProperties(oListItem, iObeyaNote, nodesiObeya);
 	    oListItem = getLabelProperties(oListItem, iObeyaLabel);
 	    oListItem = getPercentCompleteStickerProperties(oListItem, iObeyaPercentCompleteSticker);
 	    oListItem = getPriorityStickerProperties(oListItem, iObeyaPrioritySticker);
+	oListItem = getEscallationStickerProperties(oListItem, iObeyaEscallationSticker, nodesiObeya);
 
 	    // Date de modification
 		oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], new Date(getNoteLastModificationDate(iObeyaNote, nodesiObeya)));
-        
-        //Mise à jour du tableau		
+	// Nom du tableau sur lequel est la note
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
 
-	    oListItem.update();
 	    
-    	console.log("Update RIDA sur l'id iObeya :" + iObeyaNote.id);
-	
-	    return true;
-	}
-	catch(e) {
-		throw e;
-	}
+	return oListItem;
 }
+
 
 
 /*** Mise à jour du statut de synchronisation d'une donnée RIDA ***/
@@ -390,7 +380,6 @@ function mapIObeyaToRida(iObeyaNote, oListItem) {
 		// {'title': 'titre dans iobeya'}
 		var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
 		var data = iObeyaPartPtr[key];
-		
 		var type = mappingItem.type;
 		var rida_field = mappingItem.rida_field;
 
@@ -403,15 +392,12 @@ function mapIObeyaToRida(iObeyaNote, oListItem) {
 				// Mapping simple, 1 -> 1
 				case 'text':
 					// on nettoit les caractères non alphanum
-					 data = data.replace( /\t/g , "");
-					 data = data.replace( /\n/g , "");
-					 data = data.replace( /\r/g , "");
-					 data = data.replace( /\f/g , "");
+					data = data.replace(/(\t|\n|\r|\f)/g, "");
 					
 					 if(data.length>=255){
 							data=data.substring(0,254);
 						 	data=data.concat("…");
-							alert ("Le champs text de la note depasse 255 chars, il a été tronqué :\n\n" + iObeyaNote.props.content);
+						alert("Le champ texte de la note dépasse 255 caractères, il a été tronqué :\n\n" + iObeyaNote.props.content);
 					 }
 					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], data);
 					break;
@@ -486,20 +472,7 @@ function mapIObeyaToRida(iObeyaNote, oListItem) {
 				default:
 					break;
 			}
-		} else { 
-			var debug = true;
-		}	
-		// TODO - TEST - FIX : pb d'import
-		/*if (rida_field instanceof Array) {
-				for (id in rida_field)
-					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field[id]],""); // pour eviter undefined error
-		} else {	
-				if( type == 'date') 
-					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], 0); // pour eviter undefined error
-				else 
-					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], ""); // pour eviter undefined error
-		}*/
-		
+		}
 		// S'il y a des données à faire remonter à l'utilistateur iObeya, à travers le pointeur
 		// récupéré de l'objet iObeyaObj
 
@@ -537,6 +510,7 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
 					if (g_actorsTermsList[i].get_name().toLocaleLowerCase() == iObeyaLabel.contentLabel.toLocaleLowerCase()) {
 						actorTermId = g_actorsTermsList[i].get_id().toString(); // l'id du terme dans la taxonomie de sharepoint
 						found=true;	
+						// break;
 					}
 				}
 				// nouvelle option avec l'utilisation d'une liste sharepoint (l'acteur est une colonne)
@@ -549,6 +523,7 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
 					if (g_actorsTermsList[i]["actor"].toLocaleLowerCase() == iObeyaLabel.contentLabel.toLocaleLowerCase()) {
 						actorid = g_actorsTermsList[i]["ID"]; // l'id du terme dans la taxonomie de sharepoint
 						found=true;
+						// break;
 					}
 				}
 			} //for (var i in g_actorsTermsList)
@@ -576,7 +551,6 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
 				if ( g_actorsTermsList[i] instanceof Object) 
 					ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["actor"],actorid);
 			} // else
-
 		}
 		else { // il est vide...
 			ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["actor"], null);

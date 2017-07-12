@@ -1,7 +1,5 @@
-/*** 
-	
+/***
 	section : Paramétrage généraux de l'interface
-	
 ***/
 
 var DATE_FORMAT = 'dd/MM/yyyy';
@@ -109,6 +107,21 @@ var SYNC_PROPERTIES_MAP = {
 				"Faible" : {"name" : "Faible"}
 			}
 		},	
+		'ESCALLATION_MAPPING': {
+			"setName": "Escallation",
+			"map": {
+				"Orange": {
+					"destinationPanel": "SuiviCoproj",
+					"dropZone": "Point d'attention",
+					"boardUrl": "/s/download/resources/client-html-plugin/3.4.8.75324/public/#/en/board/"
+				},
+				"Blue": {
+					"destinationPanel": "Autre Panneau",
+					"dropZone": "Autre Zone",
+					"boardUrl": "Autre URL"
+				}
+			}
+		},
 		'IOBEYANOTE_MAPPING' : {
 			'title': { // dans iObeya: champ en haut
 				'iobeya_parent': 'props',

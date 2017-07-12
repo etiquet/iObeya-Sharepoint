@@ -57,12 +57,10 @@ var g_actorsTermsFullLoadCount=0;// pour être sûr d'avoir tout loadé...
 var g_countl=0;// pour être sûr d'avoir tout loadé...
 
 function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multitableau
-
 	// il faut parser l'url pour déterminer le nom du panneau donc celui de la site concernée
 	// Initialisation des paramètres globaux
 	var syncID;
 
-	
  	if (!panneau){
 		alert(	"L'url d'appel ne contient par le nom du panneau en parametre (?boardname=xxx),\n"
 			  	+"impossible de rafraichir les acteurs.\n" 
@@ -70,22 +68,18 @@ function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multi
 			 );
 		return;
 		}
-	
 	try {
-		for (entry in SYNC_PROPERTIES_MAP){
+		for (var entry in SYNC_PROPERTIES_MAP) {
 			panneau=decodeURI(panneau); // on decode en uri pour permettre les espaces et autres caractères
-			
-			
-			
+
 			if (SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC instanceof Array ){
-				for (arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
+				for (var arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
 					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr]) ) // not an array
 							syncID=entry;
 			} else if (panneau.includes(SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC) ) // not an array
 					syncID=entry;
 			}
-			
-		
+
 		if (!syncID){
 				alert("Le panneau spécifié n'a pas été trouvé dans le fichier de configuration. Arret"
 					 );
@@ -94,19 +88,17 @@ function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multi
 			g_syncID= syncID;
 
 		// Chargement des variables globales
-		// TODO what if FAILED ? <<- throw exception. Caught below
+		// If FAILED ? --> throw exception. Caught below
 		loadSyncConf(syncID);
 	} catch (e) {
-		alert(e.message);
+		displayException(e);
 	}
-
+	// Ensuite, en fonction des propriétés trouvées, on part sur la taxonomie ou la liste SP
 	if (window.hasOwnProperty('ACTORLIST_TITLE'))
 		retrieveActorsList_refresh_splist();
 	else
 		retrieveActorsList_refresh_taxonomy();
-			
-} // fin
-
+}
 
 /** Fonction qui gère la liste d'acteurs utilisant une liste sharepoint dédiée */
 var g_spActorsList; // TODO: voir pour eviter une variable globale pour syncactors liste, voir si la propriete peux être passee dans ongetquerysuceed.
@@ -181,7 +173,7 @@ function retrieveActorsList_refresh_taxonomy() {  // Initialisation de l'array m
 		waitUnitTermsareFullyLoaded(); // appelle la fonction en paramètre quand fini
 
 	} catch (e) {
-		alert(e);
+		displayException(e);
 	}
 }
 
@@ -238,9 +230,8 @@ function getActorsByTermsID(subsetiDid){
 			});
 
 	} catch(e) {
-		alert(e);
+		displayException(e);
 	}
-		
 	return l_array; // ne devrait pas passer ici...
 }
 

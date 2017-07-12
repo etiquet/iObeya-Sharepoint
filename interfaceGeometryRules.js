@@ -128,22 +128,32 @@ function findNoteAtPosition(x, y, nodesiObeya){
 
 /*** Retourne vrai si l'élément passé en paramètre est une étiquette de "Reponsable" ***/
 function isActorLabel(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardLabelDTO" && iObeyaObject.backgroundColor == LABEL_DEFAULT_COLOR;
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardLabelDTO"
+		&& iObeyaObject.backgroundColor == LABEL_DEFAULT_COLOR;
 }
 
 /*** Retourne vrai si l'élément passé en paramètre est un sticker "% achevé" ***/
 function isPercentCompleteSticker(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(PERCENTAGE_IOBEYASTICKER_MAPPING.setName);
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO"
+		&& iObeyaObject.setName.startsWith(PERCENTAGE_IOBEYASTICKER_MAPPING.setName);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre est un sticker "Priorité" ***/
 function isPrioritySticker(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO" && iObeyaObject.setName.startsWith(PRIORITY_IOBEYASTICKER_MAPPING.setName);
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO"
+		&& iObeyaObject.setName.startsWith(PRIORITY_IOBEYASTICKER_MAPPING.setName);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre est une étiquette de "Statut" ***/
 function isStatusLabel(iObeyaObject) {
-	return iObeyaObject['@class'] === "com.iobeya.dto.BoardLabelDTO" && iObeyaObject.backgroundColor != LABEL_DEFAULT_COLOR;
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardLabelDTO"
+		&& iObeyaObject.backgroundColor != LABEL_DEFAULT_COLOR;
+}
+
+/*** Retourne vrai si l'élément passé en paramètre est un sticker "Link" ***/
+function isEscallation(iObeyaObject) {
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO"
+		&& iObeyaObject.setName.startsWith(ESCALLATION_MAPPING.setName);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre n'est pas un post-it ***/
