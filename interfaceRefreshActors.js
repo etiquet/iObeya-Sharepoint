@@ -52,68 +52,57 @@ le site suivant semble propose des méthodes pour aider ... à comprendre
 // TODO : modifier le code pour que cela prenne compte d'une liste SP d'acteur et non pas de taxonomy
 
 
-var g_actorsTermsListTable = [];// multi tableau
-var g_actorsTermsFullLoadCount=0;// pour être sûr d'avoir tout loadé...
-var g_countl=0;// pour être sûr d'avoir tout loadé...
-var g_panneauname; // le nom du panneau qui doit être propagé à la fonction  syncActors_refresh(iObeyaNodes)
+var g_actorsTermsListTable = [];  // multi tableau
+var g_actorsTermsFullLoadCount = 0;  // pour être sûr d'avoir tout loadé...
+var g_countl = 0;  // pour être sûr d'avoir tout loadé...
 
-function retrieveActorsList_refresh(panneau){ // Initialisation de l'array multitableau
-
+function retrieveActorsList_refresh(panneau) { // Initialisation de l'array multitableau
 	// il faut parser l'url pour déterminer le nom du panneau donc celui de la site concernée
 	// Initialisation des paramètres globaux
 	var syncID;
 
-	
- 	if (!panneau){
-		alert(	"L'url d'appel ne contient par le nom du panneau en parametre (?boardname=xxx),\n"
-			  	+"impossible de rafraichir les acteurs.\n" 
-				+"Contactez l'administrateur du panneau."
-			 );
+	if (!panneau) {
+		alert("L'url d'appel ne contient par le nom du panneau en parametre (?boardname=xxx),\n"
+			+ "impossible de rafraichir les acteurs.\n"
+			+ "Contactez l'administrateur du panneau."
+		);
 		return;
-		}
-	
+	}
 	try {
-		for (entry in SYNC_PROPERTIES_MAP){
-			panneau=decodeURI(panneau); // on decode en uri pour permettre les espaces et autres caractères
-			
-			
-			
-			if (SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC instanceof Array ){
-				for (arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
-					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr]) ) //  an array
-							syncID=entry;
-							g_panneauname=panneau;
-			} else if (panneau.includes(SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC) ) // not an array
-					syncID=entry;
-					g_panneauname=panneau;
-			}
-			
-		
-		if (!syncID){
-				alert("Le panneau spécifié n'a pas été trouvé dans le fichier de configuration. Arret"
-					 );
-				return;
-				}
-			g_syncID= syncID;
+		for (var entry in SYNC_PROPERTIES_MAP) {
+			panneau = decodeURI(panneau); // on decode en uri pour permettre les espaces et autres caractères
+
+			if (SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC instanceof Array) {
+				for (var arr in SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'])
+					if (panneau.includes(SYNC_PROPERTIES_MAP[entry]['BOARDSTOSYNC'][arr])) // not an array
+						syncID = entry;
+			} else if (panneau.includes(SYNC_PROPERTIES_MAP[entry].BOARDSTOSYNC)) // not an array
+				syncID = entry;
+		}
+
+		if (!syncID) {
+			alert("Le panneau spécifié n'a pas été trouvé dans le fichier de configuration. Arret"
+			);
+			return;
+		}
+		g_syncID = syncID;
 
 		// Chargement des variables globales
-		// TODO what if FAILED ? <<- throw exception. Caught below
+		// If FAILED ? --> throw exception. Caught below
 		loadSyncConf(syncID);
 	} catch (e) {
-		alert(e.message);
+		displayException(e);
 	}
-
+	// Ensuite, en fonction des propriétés trouvées, on part sur la taxonomie ou la liste SP
 	if (window.hasOwnProperty('ACTORLIST_TITLE'))
 		retrieveActorsList_refresh_splist();
 	else
 		retrieveActorsList_refresh_taxonomy();
-			
-} // fin
-
+}
 
 /** Fonction qui gère la liste d'acteurs utilisant une liste sharepoint dédiée */
 var g_spActorsList; // TODO: voir pour eviter une variable globale pour syncactors liste, voir si la propriete peux être passee dans ongetquerysuceed.
-var g_collcontxtListItem2; 
+var g_collcontxtListItem2;
 
 function retrieveActorsList_refresh_splist() {
 	try {
@@ -164,7 +153,7 @@ function onGetQuerySucceededRetrieveActorsList(sender, args) {
 
 		// on appelle la fonction qui effectue le refresh ( on se logue d'abord sur le iobeya et on récupère les données)
 		checkIn(syncActors_refresh);
-		
+
 	} catch (e) {
 		alert( "Une erreur est survenue à la lecture de la liste acteurs sharepoint : " + e.message
 			+ "\n vérifiez à tout hasard le fichier de configuration interfaceConfig.js ou votre liste sharepoint \n "
@@ -184,7 +173,7 @@ function retrieveActorsList_refresh_taxonomy() {  // Initialisation de l'array m
 		waitUnitTermsareFullyLoaded(); // appelle la fonction en paramètre quand fini
 
 	} catch (e) {
-		alert(e);
+		displayException(e);
 	}
 }
 
@@ -233,7 +222,7 @@ function getActorsByTermsID(subsetiDid){
 							var l_term =terms.getItemAtIndex(i);
 							l_array.push(l_term.get_name());
 						}
-			g_actorsTermsListTable[BOARDSTOSYNC[subsetiDid]]=l_array;	 // TODO: FIX à vérifier que cela fonctionne toujours
+			g_actorsTermsListTable[BOARDSTOSYNC[subsetiDid]] = l_array;	 // TODO: FIX à vérifier que cela fonctionne toujours
 			g_actorsTermsFullLoadCount--;
 			
 			}, function(sender,args){
@@ -241,9 +230,8 @@ function getActorsByTermsID(subsetiDid){
 			});
 
 	} catch(e) {
-		alert(e);
+		displayException(e);
 	}
-		
 	return l_array; // ne devrait pas passer ici...
 }
 
@@ -269,9 +257,7 @@ function syncActors_refresh(iObeyaNodes) {
 		
 		labelsToCreate = []; // objet vidé
 		
-		//for (var i in BOARDSTOSYNC){ // TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
-		
-	
+		for (var i in BOARDSTOSYNC){
 			// Pour l'adaptation multipanneaux
 			// 2 nouvelles variables à utiliser :
 				//	g_actorsTermsListTable[i]
@@ -281,12 +267,9 @@ function syncActors_refresh(iObeyaNodes) {
 			
 
 			/* // on récupère le l_boarid depuis getBoardidFromName (l'ordre de g_iO_boards[i] n'est pas identique à celui de BOARDSTOSYNC[i] , il faut faire un lookup.)*/
-			//var l_boarid=getBoardidFromName(BOARDSTOSYNC[i]);/ TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
-			//debugger;
-			var l_boarid=getBoardidFromName(g_panneauname);  // uniquement le panneau sélectionné
-	
-
-	
+			
+			var l_boarid=getBoardidFromName(BOARDSTOSYNC[i]); 
+			
 			// le roll ressources lié au panneau
 			rollObject = findRollbyLabelName(iObeyaNodes, RESOURCES_ZONE,l_boarid); 
 			
@@ -299,7 +282,7 @@ function syncActors_refresh(iObeyaNodes) {
 			
 			// 2) Liste des nouvelles étiquettes à placer
 
-			var _obj = g_actorsTermsListTable[g_panneauname]; // l'array d'array() d'acteurs
+			var _obj = g_actorsTermsListTable[BOARDSTOSYNC[i]]; // l'array d'array() récupérés de sharepoint
 			
 			if (_obj) // /!\ peux etre nul / vide... on protère la boucle
 				for (var id in _obj) {
@@ -316,29 +299,29 @@ function syncActors_refresh(iObeyaNodes) {
 
 					if (_actorFound === false) { // on créé ici le label dans le roll
 						// Créer le label
-						ridaFormatedObject = getRidaFormatedObject(_actor,g_panneauname);
+						ridaFormatedObject = getRidaFormatedObject(_actor,BOARDSTOSYNC[i]);
 						newLabel = createActorLabel(ridaFormatedObject);
 
 						if (!newLabel)
 								var debug= true;
-						
+
 						// Placer le label
 						iObeyaNodes.push(newLabel); // on ajouter le label dans l'array pour le placement (en mémoire)
 						
 						newLabel = new placeElement(rollObject, newLabel, RESOURCES_ZONE, iObeyaNodes, Array()); // positionne le label
-						
+
 						if (!newLabel)
 								var debug= true;
-						
+
 						if (newLabel)
-							labelsToCreate.push(newLabel); // on ajouter le label dans iObeya (déplacé...)
+						labelsToCreate.push(newLabel); // on ajouter le label dans iObeya (déplacé...)
 							
 						}//if (actorFound === false)
 				} //for (var id in g_actorsTermsListTable) {
 				
 				g_rollsToRefresh.push(rollObject); // on ajoute le roll dans la liste des rolls à m.a.j
 
-			//} // for (var i in g_iO_boards){ / TODO : Clean the code. cette portion permettait de traiter tous les panneaux.
+			} // for (var i in g_iO_boards){
 		
 			// On créer les nouveaux labels
 			if (labelsToCreate.length > 0) { 
@@ -376,10 +359,8 @@ function waitUnitCommitDone4closingWindows() {
 			console.log("Commit iObeya are done : closing windows");
 			clearInterval(timerId);
 			close();
-			//alert("fini");
 		}
 	}, 1000);
 }
-	
 	
 	
