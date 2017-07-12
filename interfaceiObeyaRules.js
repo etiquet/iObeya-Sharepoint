@@ -83,6 +83,16 @@ function getAssociatedPrioritySticker(overlappingElements) {
 	return null;
 }
 
+/*** Retourne le sticker "Escallation" associé au post-it ***/
+function getAssociatedEscallationSticker(overlappingElements) {
+	for (var i in overlappingElements) {
+		if (isEscallation(overlappingElements[i])) {
+			return overlappingElements[i];
+		}
+	}
+	return null;
+}
+
 /*** Retourne la date de dernière modification d'un post-it et des éléments qui le chevauchent ***/
 function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 	var lastDate = null, iObeyaOverlapping, i, flagdebug;
@@ -94,6 +104,9 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 	if (iObeyaObject.modificationDate !== null) {
 		lastDate = Math.max(lastDate, iObeyaObject.modificationDate);
 	}
+	
+	if (iObeyaObject.creationDate !== iObeyaObject.modificationDate)
+		flagdebug=1;
 	
 	// Eléments superposés
     iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
@@ -120,7 +133,7 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 
 
 function placeElement(rollObject, element, status, nodesiObeya, overLappingElements) {
-    var lastZOrder, displayType, i,limitcatch=false;
+    var lastZOrder, displayType, i, limitcatch=false;
     try {
 		// Initialisation position
 		if (isNaN(element.x)) { element.x = 0; }
@@ -164,37 +177,37 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 		// Affichage "liste"
 		
     	if (displayType === display_list) {
-    		var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
-			
+			var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
+
 			// on supprime tous les éléments de l'array qui ne sont pas sur le board cible
-			
-			for (elmt in elementsInRectangle){
-				if (elementsInRectangle[elmt].boardid != element.boardid){
-					elementsInRectangle.splice(elmt,1)
-					}
+
+			for (elmt in elementsInRectangle) {
+				if (elementsInRectangle[elmt].boardid != element.boardid) {
+					elementsInRectangle.splice(elmt, 1)
+				}
 			}
 
-	    	while (elementsInRectangle.length > 0 
-				   && Y + realHeight < limit.Y
-				  ) {
-	    		var otherNote = elementsInRectangle[0];
+			while (elementsInRectangle.length > 0
+			&& Y + realHeight < limit.Y
+				) {
+				var otherNote = elementsInRectangle[0];
 
-	    		// Nouveau X
-	    		X = otherNote.x + otherNote.width + NOTE_DEFAULT_MARGIN;
-	    		
-	    		// Détermination du Y de la prochaine ligne
-	    		nextLineY = Math.max(nextLineY, Y, otherNote.y + otherNote.height + NOTE_DEFAULT_MARGIN);
-	    		
+				// Nouveau X
+				X = otherNote.x + otherNote.width + NOTE_DEFAULT_MARGIN;
+
+				// Détermination du Y de la prochaine ligne
+				nextLineY = Math.max(nextLineY, Y, otherNote.y + otherNote.height + NOTE_DEFAULT_MARGIN);
+
 				if (X + realWidth >= limit.X) {
-	    			// Si la ligne est complète, on passe à la suivante
-	    			X = rollObject.x + NOTE_DEFAULT_MARGIN;
-	    			Y = nextLineY;
-	    			nextLineY = -1
-	    		}
+					// Si la ligne est complète, on passe à la suivante
+					X = rollObject.x + NOTE_DEFAULT_MARGIN;
+					Y = nextLineY;
+					nextLineY = -1
+				}
 
-	    		elementsInRectangle = findElementsInRectangle(X, Y, X+realWidth, Y+realHeight, nodesiObeya);
-		    }
-    	}
+				elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
+			}
+		}
 		
 		
 		// Affichage "stack"
@@ -217,12 +230,12 @@ function placeElement(rollObject, element, status, nodesiObeya, overLappingEleme
 	    		}
 	    	}
 	    }
-		
-	    if (Y+realHeight >= limit.Y) {
-			Y= limit.Y -realHeight ; // on scotche les objects à la limite
+
+		if (Y + realHeight >= limit.Y) {
+			Y = limit.Y - realHeight; // on scotche les objects à la limite
 			X++;
-			limitcatch=true;
-	    }
+			limitcatch = true;
+		}
 	    
 	    // Récupération des marges dues à la position occupée par les éléments qui chevauchent le post-it
 		var delta = getNoteMargin(element, overLappingElements);
@@ -342,8 +355,8 @@ function findNoteStatus(iObeyaNote, nodesiObeya){
 	for (var id = 0; id < nodesiObeya.length; id++){
 		var iObeyaObject = nodesiObeya[id];  
 		if (
-			iObeyaObject['@class'] ==="com.iobeya.dto.BoardRollDTO" 
-		    && iObeyaObject.boardid ===  nodesiObeya[id].boardid		
+			iObeyaObject['@class'] ==="com.iobeya.dto.BoardRollDTO"
+		    && iObeyaObject.boardid ===  nodesiObeya[id].boardid
 		   ) {
 			// On regarde si le centre du post-it appartient à la zone
 			var chk1 = isPointInRectangle(iObeyaNote.x+iObeyaNote.width/2, iObeyaNote.y+iObeyaNote.height/2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x+iObeyaObject.width, iObeyaObject.y+iObeyaObject.height);
