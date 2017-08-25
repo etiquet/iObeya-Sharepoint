@@ -87,29 +87,14 @@ function parseDate(date) {
 					day = day.toString();
 					month = month.toString();
 
-					if (day.length < 2) day = "0" + day.toString();
-					if (month.length < 2) month = "0" + month;
-
-					return day + "/" + month + "/" + year.toString();
-
-				} else if (date.length == 6) {
-					var day = parseInt(date.substr(0, 2));
-					var month = parseInt(date.substr(2, 2));
-					if (month > 12) month = 12;
-					if (month < 1) month = 1;
-					if (day > 31) day = 31;
-					if (day < 1) day = 1;
-					var year = parseInt(date.substr(4, 2));
-					var y2 = new Date;
-					y2 = parseInt(y2.getFullYear());
-					year = Math.round(y2 / 100) * 100 + year;  // on prend centaibe  courante
-					day = day.toString();
-					month = month.toString();
-
-					if (day.length < 2) day = "0" + day.toString();
-					if (month.length < 2) month = "0" + month;
-
-					return day + "/" + month + "/" + year.toString();
+										if (day.length <2) day= "0"+day.toString();
+										if (month.length <2) month= "0"+month;
+									
+										return day +"/" + month +"/" + year.toString();
+									}
+						// else
+						return -1; // erreur sur le format; 
+					}
 				}
 				// else
 				return -1; // erreur sur le format;
@@ -119,8 +104,8 @@ function parseDate(date) {
 	
 	// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
 		//.getFullYear()
-	switch (l_date.length) {
-
+	switch(l_date.length){
+		
 		case 3:
 			var day = parseInt(l_date[0]);
 			var month = parseInt(l_date[1]);
@@ -166,7 +151,7 @@ function parseDate(date) {
 
 		default: // pas une bonne date
 			return -1; // erreur sur le format.
-			break;
+        break;
 	}
 }
 

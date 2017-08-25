@@ -107,7 +107,7 @@ function getNoteLastModificationDate(iObeyaObject, nodesiObeya) {
 	
 	if (iObeyaObject.creationDate !== iObeyaObject.modificationDate)
 		flagdebug=1;
-	
+
 	// Eléments superposés
     iObeyaOverlapping = findOverlappingElements(iObeyaObject, nodesiObeya);
 	
