@@ -1,10 +1,8 @@
-/*** 
-	
-	section : Paramétrage généraux de l'interface
-	
+/***
+    section : Paramétrage généraux de l'interface
 ***/
 
-var DATE_FORMAT = 'dd/MM/yyyy';
+var DATE_FORMAT = "dd/MM/yyyy";
 
 var NOTE_DEFAULT_COLOR = 16772735;
 var NOTE_WARNING_COLOR = 16488575;
@@ -30,7 +28,7 @@ var NOTE_STACK_MARGIN  = 70;
 
 var TOLERANCEINTERVAL = 10000; // temps minimum pour prendre en compte une modification
 
-/*** 
+/***
 	Section : Paramétrage spécificiques aux plateformes
 	commenter / décommenter les sections selon la plateforme
 ***/
@@ -108,7 +106,22 @@ var SYNC_PROPERTIES_MAP = {
 				"Normale" : {"name" : "Normale"},
 				"Faible" : {"name" : "Faible"}
 			}
-		},	
+		},
+		'ESCALLATION_MAPPING': {
+			"setName": "Escallation",
+			"map": {
+				"Orange": {
+					"destinationPanel": "SuiviCoproj",
+					"dropZone": "Point d'attention",
+					"boardUrl": "/s/download/resources/client-html-plugin/3.4.8.75324/public/#/en/board/"
+				},
+				"Blue": {
+					"destinationPanel": "Autre Panneau",
+					"dropZone": "Autre Zone",
+					"boardUrl": "Autre URL"
+				}
+			}
+		},
 		'IOBEYANOTE_MAPPING' : {
 			'title': { // dans iObeya: champ en haut
 				'iobeya_parent': 'props',
