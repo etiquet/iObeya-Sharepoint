@@ -88,7 +88,7 @@ function retrieveActorsList_refresh(panneau) { // Initialisation de l'array mult
 		g_syncID = syncID;
 
 		// Chargement des variables globales
-		// TODO what if FAILED ? <<- throw exception. Caught below
+		// If FAILED ? --> throw exception. Caught below
 		loadSyncConf(syncID);
 	} catch (e) {
 		displayException(e);

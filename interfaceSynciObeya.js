@@ -149,6 +149,7 @@ function startSync(syncID) { // fonction appelée depuis le bouton iObeya
 			//g_clientContext  = new SP.ClientContext(SITEURL); // méthode alternative
 
 			oList = g_clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
+			retrieveActorsList_sync();
 			ridaNodes = retrieveListItems(); //checkIn(syncNotes) en call back
 			retrieveActorsList_sync();
 		}, "sp.js");
@@ -193,31 +194,24 @@ function syncNotes(iObeyaNodes){
             lockSync = false;
 			window.location.reload() ; // rafraichi la page après l'erreur
 	    } else {
+			// Synchronisation
+			g_syncList = performSyncAction(ridaNodes,iObeyaNodes,g_syncList);
 
-		      // Synchronisation
-		      g_syncList = performSyncAction(ridaNodes,iObeyaNodes,g_syncList);
-
-		      // Lancement des mises à jours iObeya
-			  // la suppression se fait en premier
-
-			  if (g_nodesToTrash.length > 0){
-				  	createiObeyaNodeInTrash(iObeyaNodes,g_nodesToTrash,null);
-			  }
-
-			  if (g_nodesToUpdate.length > 0)
-			  		updateiObeyaNode(g_nodesToUpdate);
-			  if (g_nodesToCreate.length > 0)
-				  createiObeyaNode(g_nodesToCreate,null);
-
-			 if (g_syncList.length > 0)
-				 			executeCommit();// Commit changements Sharepoint
-
-		  }
+			// Lancement des mises à jours iObeya
+			// la suppression se fait en premier
+			if (g_nodesToTrash.length > 0)
+				createiObeyaNodeInTrash(iObeyaNodes,g_nodesToTrash,null);
+			if (g_nodesToUpdate.length > 0)
+				updateiObeyaNode(g_nodesToUpdate);
+			if (g_nodesToCreate.length > 0)
+				createiObeyaNode(g_nodesToCreate,null);
+			if (g_syncList.length > 0)
+				executeCommit();  // Commit changements Sharepoint
+		}
 	}
 	catch (e) {
 		// On informe l'utilisateur de la raison de l'erreur
 		displayException(e);
-
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
@@ -283,7 +277,8 @@ function compareforSyncAction(nodesRida, nodesiObeya) {
 			}
 		}
 
-		/* Parcours de l'array iObeya en mémoire
+		/*
+		 Parcours de l'array iObeya en mémoire
 		 Traitement des éléments iObeya qui diffèrent
 		 2 cas sont seulements traités :
 		 - création d'une entrée RIDAv
@@ -663,7 +658,9 @@ g_iO_activeRoom = null;
 	myxmlr.withCredentials = true;
 
 	myxmlr.onerror = function (e) {
-		displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status));
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status
+		));
 		enableButton();
 		lockSync = false;
 		window.location.reload(); // rafraichi la page après l'erreur
@@ -765,7 +762,9 @@ function getBoards(syncMethod) {
 
 
 	myxmlr.onerror = function (e) {
-		displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status));
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/rooms" + "\n Error Status: " + e.target.status
+		));
 		// Réactivation du bouton
 		enableButton();
 		lockSync = false;
@@ -860,8 +859,10 @@ var myxmlr = null;
 	myxmlr.withCredentials = true;
 
 	myxmlr.onerror = function(e) {
-		displayException(new InterfaceException("Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/"
-												+ l_boardid + "/details" + "\n Error Status: " + e.target.status));
+		displayException(new InterfaceException(
+			"Une erreur est survenue pendant l'appel de l'url : " + IOBEYAURL + "/s/j/boards/"
+												+ l_boardid + "/details" + "\n Error Status: " + e.target.status
+		));
 		// Réactivation du bouton
 		enableButton();
         lockSync=false;
@@ -942,7 +943,7 @@ var myxmlr = null;
  */
 
 /*** Création d'un post-it dans iObeya (initialisation) ***/
-// TODO: spécialiser cette fonction pour fork copy/create
+// TODO: que faire en cas de suppression du sticker lien ?
 function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj, uid, clonediObeyaNode) {
 	var l_boardid = null;
 
@@ -1086,7 +1087,9 @@ function createNoteIniObeya(nodesRida, nodesiObeya, ridaObj, uid, clonediObeyaNo
 	}
 }
 
-/*** Mise à jour d'un post-it dans l'objet iObeya ***/
+/***
+ * Mise à jour d'un post-it dans l'objet iObeya
+ **/
 function updateNoteIniObeya(nodesRida, nodesiObeya, ridaObj, iObeyaObj, iObeyaOverlapping){
 	try {
 		console.log("Mise à jour d'un post-it dans iObeya");
