@@ -18,15 +18,15 @@ function InterfaceException(message) {
  */
 
 /*** Ajout d'anti-slashs devant les caractères spéciaux non autorisés ***/
-function addslashes(str) {
+function escapeCharacters(str) {
     return (str + '')
-        .replace(/[\\"']/g, '\\$&')
+//        .replace(/[\\"']/g, '\\$&') // Ni RIDA ni iObeya ne semble sensibles à ces caractères
         .replace(/\u0000/g, '\\0');
 }
 
 /*** Formatage des données (contrôle des caractères spéciaux) ***/
 function parseNoteText(str) {
-	str = addslashes(str);
+	str = escapeCharacters(str);
 	//str = str.replace(/[^a-z0-9 áàâäãåçéèêëíìîïñóòôöõúùûüýÿæœÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸÆŒ\s_\-,.?!';]/ig, '');
 	
 	return str;
