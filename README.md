@@ -45,6 +45,7 @@ Procédure accélérée pour création d’une nouvelle configuration
 
 7/ Modifier le fichier de configuration interfaceConfig.js pour ajouter la nouvelle configuration, 
 	Vous pouvez travailler par héritage d’un autre paramètre par exemple: 
+	-- debut --
 
 	,/*<- pensez à ajouter une virgule à l’issus du dernier paramètre existant ( c’est une liste javascript , le ‘,’ délimite 2 valeurs)*/
 	'third': {
@@ -54,6 +55,32 @@ Procédure accélérée pour création d’une nouvelle configuration
 		'LISTSHAREPOINT_TITLE' : "Chantier Program Acceleration", // attention aux espaces
 		'RIDALIST_URL' : '/sites/pfe/Lists/Chantier Program Acceleration/MyItems.aspx',
 	}
+	-- fin --
+	
+7/ Si vous souhaitez mettre en oeuvre la capacité d'escalade de post-it entre 2 panneaux 
 
-7/ Effectuez quelques tests croisés de creation de note ou d’entrée RIDA pour vérifier que vos paramètres sont OK.
-8/ Fini
+	-- debut --
+	,/*<- pensez à ajouter une virgule à l’issus du dernier paramètre existant ( c’est une liste javascript , le ‘,’ délimite 2 valeurs)*/
+        //important : les noms de board target sont uniques entre les #plateformes connectées
+        'ESCALLATION_MAPPING': {
+            "setName": "Escallation",
+            "map": {
+                "Orange": {
+                    "target_url" :"https://devptf.iobeya.com",
+                    "target_room" : "CAP - SIAé",
+                    "target_board" : "SuiviCoproj",
+                    "target_dropZone": "Point d'attention"
+                },
+                "Blue": {
+                    "target_url" : "https://devptf.iobeya.com", //ptf @cap en 3.4
+                    "target_room" : "CAP - SIAé",
+                    "target_board" : "SuiviBSU",
+                    "target_dropZone": "Point d'attention"
+                }
+	    }
+        }, // la virgule s'il y a d'autres paramètres en suivant
+
+	-- fin --
+
+8/ Effectuez quelques tests croisés de création de note ou d’entrée RIDA pour vérifier que vos paramètres sont OK.
+9/ Fini
