@@ -44,8 +44,8 @@ Procédure accélérée pour création d’une nouvelle configuration
 		https://devptf.sharepoint.com/sites/pfe/JsDocs/callRefreshActors.aspx?boardname=Developpement%20-%20Interne
 
 7/ Modifier le fichier de configuration interfaceConfig.js pour ajouter la nouvelle configuration, 
+	
 	Vous pouvez travailler par héritage d’un autre paramètre par exemple: 
-	-- debut --
 
 	,/*<- pensez à ajouter une virgule à l’issus du dernier paramètre existant ( c’est une liste javascript , le ‘,’ délimite 2 valeurs)*/
 	'third': {
@@ -55,7 +55,7 @@ Procédure accélérée pour création d’une nouvelle configuration
 		'LISTSHAREPOINT_TITLE' : "Chantier Program Acceleration", // attention aux espaces
 		'RIDALIST_URL' : '/sites/pfe/Lists/Chantier Program Acceleration/MyItems.aspx',
 	}
-	-- fin --
+
 	
 7/ Si vous souhaitez mettre en oeuvre la capacité d'escalade de post-it entre 2 panneaux 
 
