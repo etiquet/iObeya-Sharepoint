@@ -32,11 +32,11 @@ var result = false;
 }
 
 /*** Vérifie si des noeuds vérifiant la condition donnée chevauche le rectangle (x1, y1, x2, y2) ***/
-function findNodesInRectangle(x1, y1, x2, y2, nodesiObeya, conditionTestFunction) {
+function findNodesInRectangle(x1, y1, x2, y2, iObeyaNodes, conditionTestFunction) {
 var result = Array();
 	
-	for (var id in nodesiObeya){
-		var iObeyaObject = nodesiObeya[id];
+	for (var id in iObeyaNodes){
+		var iObeyaObject = iObeyaNodes[id];
 		if (conditionTestFunction(iObeyaObject)) { // on utilise la fonction qui est passé en paramètre pour tester la nature de l'objet
 			var chk = isRectanglesIntersectionNotNull(x1, y1, x2, y2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x+iObeyaObject.width, iObeyaObject.y+iObeyaObject.height);
 			if (chk) {
@@ -49,18 +49,18 @@ var result = Array();
 }
 
 /*** Vérifie si des éléments (tous sauf rouleaux) chevauchent le rectangle (x1, y1, x2, y2) ***/
-function findElementsInRectangle(x1, y1, x2, y2, nodesiObeya) {
-	return findNodesInRectangle(x1, y1, x2, y2, nodesiObeya, isNotRoll);
+function findElementsInRectangle(x1, y1, x2, y2, iObeyaNodes) {
+	return findNodesInRectangle(x1, y1, x2, y2, iObeyaNodes, isNotRoll);
 }
 
 /*** Vérifie si des étiquettes "Ressource" chevauchent le rectangle (x1, y1, x2, y2) ***/
-function findActorsInRectangle(x1, y1, x2, y2, nodesiObeya){
-	return findNodesInRectangle(x1, y1, x2, y2, nodesiObeya, isActorLabel);
+function findActorsInRectangle(x1, y1, x2, y2, iObeyaNodes){
+	return findNodesInRectangle(x1, y1, x2, y2, iObeyaNodes, isActorLabel);
 }
 
 /*** Retourne tous les éléments qui sont au dessous du post-it ***/
-function findOverlappingElements(note, nodesiObeya){
-	var foundElements = findNodesInRectangle(note.x, note.y, note.x + note.width, note.y + note.height, nodesiObeya, isNotNote);
+function findOverlappingElements(note, iObeyaNodes){
+	var foundElements = findNodesInRectangle(note.x, note.y, note.x + note.width, note.y + note.height, iObeyaNodes, isNotNote);
 	var overLappingElements = Array();
 	
 	// Ne conserver que les éléments situés "au-dessus" du post-it
@@ -79,7 +79,7 @@ function findOverlappingElements(note, nodesiObeya){
 			}*/
 			
             console.log("board: " + note.boardname 
-						+ " note: " + note.notetitle 
+						+ " note: " + note.props.title 
 						+ " node type: " + foundElements[i]['@class']
 						+ " node name: " + foundElements[i].setName
 					   );	
@@ -113,9 +113,9 @@ function isRectanglesIntersectionNotNull(x1_1, y1_1, x2_1, y2_1, x1_2, y1_2, x2_
 
 
 /*** Vérifie si l'origine d'un post-it est présente à la position (x,y) ***/
-function findNoteAtPosition(x, y, nodesiObeya){
-	for (var id in nodesiObeya){
-		var iObeyaObject = nodesiObeya[id];
+function findNoteAtPosition(x, y, iObeyaNodes){
+	for (var id in iObeyaNodes){
+		var iObeyaObject = iObeyaNodes[id];
 		if (iObeyaObject['@class'] ==="com.iobeya.dto.BoardNoteDTO") {
 			var chk1 = (x == iObeyaObject.x && y == iObeyaObject.y);
 			if (chk1) {
@@ -156,29 +156,36 @@ function isNotRoll(iObeyaObject) {
 	return iObeyaObject['@class'] !== "com.iobeya.dto.BoardRollDTO";
 }
 
+/*** Retourne vrai si l'élément passé en paramètre est un sticker "Link" ***/
+function isEscallation(iObeyaObject) {
+	return iObeyaObject['@class'] === "com.iobeya.dto.BoardStickerDTO"
+		&& iObeyaObject.setName.startsWith(ESCALLATION_MAPPING.setName);
+}
+
+
 /*** Retourne le zOrder maximum d'une liste de noeuds ***/
-function maxZOrder(nodesiObeya) {
+function maxZOrder(iObeyaNodes) {
 	var lastZOrder = 0;
-	for (var i=0; i<nodesiObeya.length; i++) {
-		if (!isNaN(nodesiObeya[i].zOrder)) {
+	for (var i=0; i<iObeyaNodes.length; i++) {
+		if (!isNaN(iObeyaNodes[i].zOrder)) {
 			// Calcul du zOrder à affecter
-			lastZOrder = Math.max(lastZOrder, nodesiObeya[i].zOrder+1);
+			lastZOrder = Math.max(lastZOrder, iObeyaNodes[i].zOrder+1);
 		}
 	}
 	return lastZOrder;
 }
 
 /*** Trie le tableau d'éléments iObeya par zOrder, puis leur réassigne de nouveaux zOrders ***/
-function refreshZOrders(nodesiObeya) {
+function refreshZOrders(iObeyaNodes) {
 	// Tri
-	nodesiObeya.sort(compareZOrders);
+	iObeyaNodes.sort(compareZOrders);
 	
 	// Nouveaux zOrders
-	for (i=0; i<nodesiObeya.length; i++) {
-		nodesiObeya[i].zOrder = i+1;
+	for (i=0; i<iObeyaNodes.length; i++) {
+		iObeyaNodes[i].zOrder = i+1;
 	}
 	
-	return nodesiObeya;
+	return iObeyaNodes;
 }
 
 /*** Compare les zOrders de deux éléments iObeya ***/

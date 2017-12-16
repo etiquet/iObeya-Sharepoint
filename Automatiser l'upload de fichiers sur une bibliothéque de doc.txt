@@ -1,0 +1,116 @@
+# Automatiser l'upload de fichiers sur une bibliothéque de documents SharePoint
+
+La configuration de cette automatisation se fait uniquement sur la machine de développement donc n'altère en aucun cas la configuration du serveur sharepoint.
+
+## Prérequis
+
+- [NodeJS](https://nodejs.org/en/) (>= v8.6.0)
+
+## Installation
+
+Créer un fichier `package.json` à la racine du projet avec le contenu suivant : 
+
+```json
+{
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-cached": "^1.1.1",
+    "gulp-changed": "^1.3.2",
+    "gulp-spsave": "^3.0.0",
+    "gulp-watch": "^4.3.11"
+  }
+}
+```
+
+Créer un fichier `gulpfile.json` à la racine du projet avec le contenu suivant : 
+
+```javascript
+var gulp = require('gulp');
+var spsave = require('gulp-spsave');
+var watch = require('gulp-watch');
+var cached = require('gulp-cached');
+
+// données sensibles stockées dans un fichier externe (pas versionné donc doit être créé)
+var creds = require('./creds.js');
+
+var coreOptions = {
+    // lien vers le site sharepoint
+    siteUrl: 'https://devptf.sharepoint.com/sites/pfe',
+    notification: true,
+    // path de la bibliothèque de documents "Fichiers Javascript Synchro"
+    folder: "JsDocs/",
+    flatten: false
+
+};
+
+var credentials = {
+    username: creds.username,
+    password: creds.password
+};
+
+gulp.task('spdefault', function() {
+    // runs the spsave gulp command on only files the have
+    // changed in the cached files
+    return gulp.src('src/**')
+        .pipe(cached('spFiles'))
+        .pipe(spsave(coreOptions, credentials));
+});
+
+gulp.task('default', function() {
+    // create an initial in-memory cache of files
+    gulp.src('src/**')
+        .pipe(cached('spFiles'));
+
+    // watch the src folder for any changes of the files
+    gulp.watch(['./src/**'], ['spdefault']);
+});
+```
+
+Créer un fichier `creds.js` (fichier à ajouter au `.gitignore` du projet) à la racine du projet avec le contenu suivant :
+
+```javascript
+export const username = "eric.tiquet@devptf.onmicrosoft.com";
+export const password = "<pw>";
+
+module.exports.username = username;
+module.exports.password = password;
+```
+
+Mettre tous le code javascript dans un dossier `/src`.
+
+```
+creds.js
+gulpfile.js
+jquery-2.1.4.js
+node_modules/
+package-lock.json
+package.json
+src/
+|--interfaceCRUD.js
+|--interfaceConfig.js
+|--interfaceGeometryRules.js
+|--interfaceGetitems.js
+|--interfaceRefreshActors.js
+|--interfaceSynciObeya.js
+|--interfaceUtils.js
+|--interfaceiObeyaRules.js
+```
+
+Dans un terminal, lancer les commandes suivantes pour installer les diffèrents packages listés dans `package.json` : 
+
+```
+npm install -g gulp-cli
+npm install
+```
+
+Lancer la commande suivante permettra d'uploader chaque fichier modifié (après un `ctrl` + `s`) sur la bibliothéque de documents sharepoint.
+
+```
+gulp default
+```
+
+`ctrl` + `c` pour arrêter le script.
+
+
+
+> **Remarque : Comme le script upload à chaque fois qu'une sauvegarde est faite, il faut désactiver la fonction sauvegarde automatique de l'IDE ou editeur de texte utilisé pour éviter  les upload non nécessaire à chaque x minute(s). **
