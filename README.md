@@ -59,7 +59,7 @@ Procédure accélérée pour création d’une nouvelle configuration
 	
 7/ Si vous souhaitez mettre en oeuvre la capacité d'escalade de post-it entre 2 panneaux 
 
-	-- debut --
+	
 	,/*<- pensez à ajouter une virgule à l’issus du dernier paramètre existant ( c’est une liste javascript , le ‘,’ délimite 2 valeurs)*/
         //important : les noms de board target sont uniques entre les #plateformes connectées
         'ESCALLATION_MAPPING': {
@@ -80,7 +80,34 @@ Procédure accélérée pour création d’une nouvelle configuration
 	    }
         }, // la virgule s'il y a d'autres paramètres en suivant
 
-	-- fin --
+	
 
-8/ Effectuez quelques tests croisés de création de note ou d’entrée RIDA pour vérifier que vos paramètres sont OK.
-9/ Fini
+8/ Si vous souhaitez mettre en oeuvre la capacité de log des actions dans une liste sharepoint
+	
+	Créer une liste de log dans le sharepoint (prendre modèle : Modèle de liste pour log actions iObeya.stp )
+
+	
+	,/*<- pensez à ajouter une virgule à l’issus du dernier paramètre existant ( c’est une liste javascript , le ‘,’ délimite 2 valeurs)*/
+        //important : les noms de board target sont uniques entre les #plateformes connectées
+        'ESCALLATION_MAPPING': {
+            "setName": "Escallation",
+            "map": {
+                "Orange": {
+                    "target_url" :"https://devptf.iobeya.com",
+                    "target_room" : "CAP - SIAé",
+                    "target_board" : "SuiviCoproj",
+                    "target_dropZone": "Point d'attention"
+                },
+                "Blue": {
+                    "target_url" : "https://devptf.iobeya.com", //ptf @cap en 3.4
+                    "target_room" : "CAP - SIAé",
+                    "target_board" : "SuiviBSU",
+                    "target_dropZone": "Point d'attention"
+                }
+	    }
+        }, // la virgule s'il y a d'autres paramètres en suivant
+
+
+
+9/ Effectuez quelques tests croisés de création de note ou d’entrée RIDA pour vérifier que vos paramètres sont OK.
+10/ Fini
