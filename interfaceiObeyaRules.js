@@ -150,6 +150,7 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
 
         // Délimitation de la zone
         var limit = getZoneLimit(rollObject);
+		
         // Point de départ
         var X = rollObject.x + NOTE_DEFAULT_MARGIN; // Marge à gauche
         var Y = rollObject.y + NOTE_DEFAULT_MARGIN + limit.YOffset; // Marge au-dessus
@@ -226,29 +227,30 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
 }
 
 /*** Détermine l'emplacement où doit se trouver l'étiquette "Responsable" à la création ***/
-function placeLabel(label, note) {
-    label.x = note.x + note.width / 2 - label.width / 2;
-    label.y = note.y - LABEL_POSITION_MARGIN_TOP;
-    label.zOrder = note.zOrder + 1;
 
+function placeLabel(label, note) {
+    label.x = note.x + note.width - label.width ; // a droite
+	label.y = note.y - LABEL_POSITION_MARGIN_TOP; // par défaut en haut droite
+	if (note['@class'] = "com.iobeya.dto.BoardNoteDTO"){
+		label.y = note.y note.height - label.height;		// si c'est une card l'acteur est positionné sur le bas
+		} 
+    label.zOrder = note.zOrder + 1;
     return label;
 }
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "% achevé" à la création ***/
 function placePercentCompleteSticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width;
-    sticker.y = note.y + note.height - sticker.height;
-    sticker.zOrder = note.zOrder + 1;
-
+    sticker.x = note.x + note.width - sticker.width/2;
+    sticker.y = note.y + note.height + 2 x sticker.height;
+    sticker.zOrder = note.zOrder + 2;
     return sticker;
 }
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "Priority" à la création ***/
 function placePrioritySticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width / 2;
-    sticker.y = note.y;
-    sticker.zOrder = note.zOrder + 1;
-
+    sticker.x = note.x + note.width - sticker.width/2;
+    sticker.y = note.y + note.height + sticker.height;
+	sticker.zOrder = note.zOrder + 3;
     return sticker;
 }
 

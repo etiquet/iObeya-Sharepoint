@@ -840,7 +840,10 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
         for (var iniObeya = 0; iniObeya < iObeyaNodes.length; iniObeya++) {
             iObeyaObject = iObeyaNodes[iniObeya]; // on tente de trouver le noeud Rida correspondant
 
-            if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO") {
+            if ( // note(s) ou card
+				iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO"||
+				iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO"
+			   ) {
                 syncObject = null;
                 ridaObject = getRidaObjectByiObeyaId(nodesRida, iObeyaObject.id);
                 // Cas n°6 : clône de notes ? (présence d'un sticker spécial)
@@ -872,7 +875,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                         }
                     } // if ( ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase() )
                 } // else if (ridaObject == null)
-            } // c'est une note if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO")
+            } // c'est une note if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" || iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" )
         } // loop array d'objets iObeya
 
         // A cette étape la liste des CRUD de synchronisations est complète.
@@ -1137,7 +1140,10 @@ function enrichSyncInfoFromiObeyaObject(iObeyaObject, iObeyaNodes, syncElement) 
 function updateRollListToRefesh(iObeyaConnectedPlatform, iObeyaObject) {
 //on regarde si le roll existe dejà dans la liste courante
     var found = -1, roll,statusObject;
-    if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO") { // pour accélérer on ne traite que les boards ( les stickers etc... sont forcéments sur une note )
+    if (
+		iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" ||
+		iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" 
+	) { // pour accélérer on ne traite que les notes / cards ( les stickers etc... sont forcéments sur une note/card )
         statusObject = findNoteStatus(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes); // on récupère le status et le roll
 
         for (var ii in iObeyaConnectedPlatform.rollsToRefresh) { // on scanne la liste existante
@@ -1241,7 +1247,7 @@ function createNoteIniObeya(iObeyaConnectedPlatform, ridaObj, uid, iObeyaNodeToC
 
         // Initialisation de l'object Notes
         var newNote = {};
-        newNote['@class'] = "com.iobeya.dto.BoardNoteDTO";
+        newNote['@class'] = "com.iobeya.dto.BoardNoteDTO"; // TOTO vérifier le type note(plusieurs type de notes) ou la card  "com.iobeya.dto.BoardCardDTO" 
         newNote.id = uid;
         newNote.isAnchored = false;
         newNote.isLocked = false;

@@ -21,7 +21,7 @@ function retrieveRidaListItems(iObeyaConnectedPlatform) {
     }
 }
 
-/*** Récupère un champ RIDA et le convertit pour import dans iObeya ***/
+/*** Récupère un champ RIDA et formatte le contenu pour créer un array en mémoire ***/
 function formateFieldToExport(field) {
     try {
 
@@ -71,7 +71,7 @@ function formateFieldToExport(field) {
 }
 
 /***
- Succès de la récupération des données Sharepoint : stockage dans ridaNodes
+ Succès de la récupération des données Sharepoint : stockage dans l'array ridaNodes
  Cette fonction est une fonction "classique" de sharepoint en cas de succès
  C'est la fonction qui récupère la liste sharepoint
  ***/

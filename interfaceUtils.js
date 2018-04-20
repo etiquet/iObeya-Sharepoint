@@ -364,6 +364,12 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
                 // zorder est la condition pour filtrer un objet visible des panneaux d'autres choses.
                 if (data[i].hasOwnProperty("zOrder")) {
                     iObeyaConnectedPlatform.iObeyaNodes.push(data[i]);
+					
+					if ( // Pour permettre le debug
+						data[i]['@class'] == "com.iobeya.dto.BoardCardDTO" ||
+						data[i]['@class'] == "com.iobeya.dto.BoardNoteDTO") {
+						var dobreakfornotes=true;
+					}
                 }
             }
 

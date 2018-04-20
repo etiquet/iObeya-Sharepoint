@@ -116,7 +116,10 @@ function isRectanglesIntersectionNotNull(x1_1, y1_1, x2_1, y2_1, x1_2, y1_2, x2_
 function findNoteAtPosition(x, y, iObeyaNodes){
 	for (var id in iObeyaNodes){
 		var iObeyaObject = iObeyaNodes[id];
-		if (iObeyaObject['@class'] ==="com.iobeya.dto.BoardNoteDTO") {
+		if (
+			iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" ||
+			iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" 
+		) {
 			var chk1 = (x == iObeyaObject.x && y == iObeyaObject.y);
 			if (chk1) {
 				return iObeyaObject.id;
@@ -146,9 +149,12 @@ function isStatusLabel(iObeyaObject) {
 	return iObeyaObject['@class'] === "com.iobeya.dto.BoardLabelDTO" && iObeyaObject.backgroundColor != LABEL_DEFAULT_COLOR;
 }
 
-/*** Retourne vrai si l'élément passé en paramètre n'est pas un post-it ***/
+/*** Retourne vrai si l'élément passé en paramètre n'est pas une card / note  ***/
 function isNotNote(iObeyaObject) {
-	return iObeyaObject['@class'] !== "com.iobeya.dto.BoardNoteDTO";
+	return !(
+			iObeyaObject['@class'] == "com.iobeya.dto.BoardNoteDTO" ||
+			iObeyaObject['@class'] == "com.iobeya.dto.BoardCardDTO"  
+			);
 }
 
 /*** Retourne vrai si l'élément passé en paramètre n'est pas un rouleau ***/
