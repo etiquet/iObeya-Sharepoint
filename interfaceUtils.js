@@ -369,6 +369,10 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
 						data[i]['@class'] == "com.iobeya.dto.BoardCardDTO" ||
 						data[i]['@class'] == "com.iobeya.dto.BoardNoteDTO") {
 						var dobreakfornotes=true;
+						if( data[i].entityType)
+							if( data[i].entityType =="BoardCard")
+								data[i]['@class'] = "com.iobeya.dto.BoardCardDTO";
+						
 					}
                 }
             }
@@ -465,7 +469,8 @@ function escapeCharacters(str) {
 function parseNoteText(str) {
     str = escapeCharacters(str);
     //str = str.replace(/[^a-z0-9 áàâäãåçéèêëíìîïñóòôöõúùûüýÿæœÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸÆŒ\s_\-,.?!';]/ig, '');
-
+	// supprime potentiellement tous les tags html => TODO:à vérifier !!!
+	str=str.replace(/(<\?[a-z]*(\s[^>]*)?\?(>|$)|<!\[[a-z]*\[|\]\]>|<!DOCTYPE[^>]*?(>|$)|<!--[\s\S]*?(-->|$)|<[a-z?!\/]([a-z0-9_:.])*(\s[^>]*)?(>|$))/gi, ''); 
     return str;
 }
 

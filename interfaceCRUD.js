@@ -291,7 +291,7 @@ function commitiObeyaChanges(iObeyaConnectedPlatform) {
                            
                                     */
 
-/*** Déclanchement la sérialisation de la file de requetes vers iObeya***/
+/*** Déclenchement la sérialisation de la file de requetes vers iObeya***/
 /*
  *
  * @param {type} iObeyaConnectedPlatform
@@ -689,7 +689,16 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
     var error = 0;
 
     try { // On traite les données liées à la charge
-
+		
+		// Echéance ferme (la note est en rouge pour la note, pour la card c'est une propriété intrasèque)
+		
+		if (iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO")  // pour la note seulement
+			if (iObeyaNote.color === NOTE_WARNING_COLOR) {
+				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], true);
+			} else {
+				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
+			}
+		
         error = mapIObeyaToRida(oListItem,iObeyaNote); // affectation dynamique des champs.
 
         if (error) { // il y a eu un pb d'interpretation
@@ -700,13 +709,7 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
 
         statusObject = findNoteStatus(iObeyaNote, iObeyaNodes); // Statut
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["status"], statusObject.status);
-
-        // Echéance ferme (la note est en rouge)
-        if (iObeyaNote.color === NOTE_WARNING_COLOR) {
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], true);
-        } else {
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
-        }
+		
         // ID iObeya
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["idiObeya"], iObeyaNote.id);
         // Synchronisé avec iObeya : Oui
@@ -730,6 +733,10 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
     for (var key in IOBEYANOTE_MAPPING) {
         var mappingItem = IOBEYANOTE_MAPPING[key];
 
+			// on ne garde que les propriétés liés à l'object iObeya en cours
+		if (mappingItem.class !==  iObeyaNote['@class']) 
+			continue;
+		
         // Vérification de la présence des champs nécessaires
         if (!mappingItem.hasOwnProperty('type')) {
             //throw new InterfaceException("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ \'type\'");
@@ -742,6 +749,8 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
             continue;
         }
 
+
+		
         // Initialisation à partir du template iObeya
         // {'title': 'titre dans iobeya'}
         var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
@@ -838,6 +847,21 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
                     // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
                     updateIObeya = true;
                     break;
+					
+				// pour la card, il faut pouvoir passer la date en format unix directement	
+				case "datepassthrough": 
+					if (data){
+                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data)) ;							
+						}
+                    break;
+				case "boolean": 
+					if (data)
+						if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1"  ) {
+                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], true);
+						} else {
+                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], false);						
+						}
+                    break;	
 
                 default:
                     break;
@@ -883,6 +907,9 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
     for (var key in IOBEYANOTE_MAPPING) {
         var mappingItem = IOBEYANOTE_MAPPING[key];
 
+		if (mappingItem.class !==  iObeyaNote['@class']) 
+			continue;
+		
         // Vérification de la présence des champs nécessaires
         if (!mappingItem.hasOwnProperty('type')) {
             //throw new InterfaceException("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ \'type\'");
@@ -899,7 +926,9 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
         // {'title': 'titre dans iobeya'}
         var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
         var data = iObeyaPartPtr[key];
+		// on ne garde que les propriétés liés à l'object iObeya en cours
 
+		
         var type = mappingItem.type;
         var rida_field = mappingItem.rida_field;
 
@@ -989,6 +1018,24 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
                     // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
                     break;
 
+				 case 'datepassthrough': // pour la card on passe la valeur numérique	
+                    if (data) {
+                        RidaObject[rida_field] = data;
+                    } else {
+                        error++;
+                    }
+                    // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
+                    break;
+					
+				case "boolean": 
+					if (data)
+						if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1"  ) {
+                        	RidaObject[rida_field] = true;
+						} else {
+                        	RidaObject[rida_field] = false;					
+						}
+                    break;						
+					
                 default:
                     break;
             }
@@ -1000,11 +1047,15 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
     // on récupère les autres informations sur la note 
     var statusObject = findNoteStatus(iObeyaNote, iObeyaNodes); // Statut
     RidaObject.status = statusObject.status;
-    if (iObeyaNote.color === NOTE_WARNING_COLOR)         // Echéance ferme (la note est en rouge)
-        RidaObject.firmDeadline= true;
-    else
-        RidaObject.firmDeadline= false;
-    RidaObject.idiObeya = iObeyaNote.id;
+   
+	if(iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO" ){ // si note
+		if (iObeyaNote.color === NOTE_WARNING_COLOR)         // Echéance ferme (la note est en rouge)
+			RidaObject.firmDeadline= true;
+		else
+			RidaObject.firmDeadline= false;
+		}
+	
+	RidaObject.idiObeya = iObeyaNote.id;
     RidaObject.datecreation = parseInt(iObeyaNote.creationDate);
     RidaObject.modificationDate = parseInt(getNoteLastModificationDate(iObeyaNote, iObeyaNodes));
     RidaObject.synchroStatus= synchro_status_done;

@@ -119,7 +119,7 @@ function findNoteAtPosition(x, y, iObeyaNodes){
 		if (
 			iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" ||
 			iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" 
-		) {
+		) {//TODO modifié 
 			var chk1 = (x == iObeyaObject.x && y == iObeyaObject.y);
 			if (chk1) {
 				return iObeyaObject.id;
@@ -150,7 +150,7 @@ function isStatusLabel(iObeyaObject) {
 }
 
 /*** Retourne vrai si l'élément passé en paramètre n'est pas une card / note  ***/
-function isNotNote(iObeyaObject) {
+function isNotNote(iObeyaObject) {// TODO:modifié
 	return !(
 			iObeyaObject['@class'] == "com.iobeya.dto.BoardNoteDTO" ||
 			iObeyaObject['@class'] == "com.iobeya.dto.BoardCardDTO"  
