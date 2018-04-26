@@ -21,7 +21,10 @@ function retrieveRidaListItems(iObeyaConnectedPlatform) {
     }
 }
 
-/*** Récupère un champ RIDA et le convertit pour import dans iObeya ***/
+/*** Récupère un champ RIDA et formatte le contenu pour créer un array en mémoire ***/
+// TODO: card:vérifier les champs de type text et advanced text.
+//vérifier les champs modifié / crée pa
+
 function formateFieldToExport(field) {
     try {
 
@@ -53,9 +56,9 @@ function formateFieldToExport(field) {
             return field.get_label();
         }
 
-        if (field instanceof Object) { 	//  type de donnée non traitée
-            if (field.hasOwnProperty("$5U_1")) // propriété contenant le nom de l'utilisateur 
-                return field["$5U_1"];
+        if (field instanceof SP.FieldUserValue) { 	//  type de donnée non traitée
+            if (field.hasOwnProperty("$5g_1")) // propriété contenant le nom de l'utilisateur 
+                return field["$5g_1"];
             else
                 return "/!\\type non traite";
         }
@@ -71,7 +74,7 @@ function formateFieldToExport(field) {
 }
 
 /***
- Succès de la récupération des données Sharepoint : stockage dans ridaNodes
+ Succès de la récupération des données Sharepoint : stockage dans l'array ridaNodes
  Cette fonction est une fonction "classique" de sharepoint en cas de succès
  C'est la fonction qui récupère la liste sharepoint
  ***/

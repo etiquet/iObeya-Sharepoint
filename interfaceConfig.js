@@ -6,18 +6,24 @@
 
 var DATE_FORMAT = 'dd/MM/yyyy';
 
+// dimension d'une note (grande taille)
 var NOTE_DEFAULT_COLOR = 16772735;
 var NOTE_WARNING_COLOR = 16488575;
 var NOTE_DEFAULT_WIDTH = 375;
 var NOTE_DEFAULT_HEIGHT = 225;
+var NOTE_DEFAULT_LAYOUTID = "standard" ;
+
+//Prise en compte des cards (grande taille) //v1.18
+var CARD_DEFAULT_COLOR = 0xfef5be;
+var CARD_WARNING_COLOR = 0xfa977e;
+var CARD_DEFAULT_WIDTH = 379;
+var CARD_DEFAULT_HEIGHT = 297;
 
 var LABEL_DEFAULT_COLOR = 3355443;
 var LABEL_DEFAULT_FONT_COLOR = 16777215;
 var LABEL_DEFAULT_WIDTH = 225;
 var LABEL_DEFAULT_HEIGHT = 60;
-
-var LABEL_POSITION_MARGIN_TOP = 20;
-
+var LABEL_POSITION_MARGIN_TOP = -5;
 var LABEL_DEFAULT_SETNAME = "Label";
 var LABEL_DEFAULT_NAME = "Acteurs";
 
@@ -50,8 +56,8 @@ var SYNC_PROPERTIES_MAP = {
         'ACTORSSET_ID' : '62bc99d5-39ae-4cae-9d6d-4e5c00c2ae30', // "ActeurTerme" TERMSET
         'ACTORSSUBSET_ID' : ["157a0c3f-2085-4f56-b224-85771c3c3af1", "44259241-48cc-407c-92fb-803ee33c6d16", "d19c768a-5e41-44f7-8ed7-d05216f62770", "0cc10e7e-117c-4a43-a9fe-7b5d78c89979"], // Important : doit être dans le même ordre que la liste des panneaux à synchroniser...
         'USE_ACTORSSUBSETLIST' : 'false', // utilisation ou pas des sous-listes de la taxonomie des acteurs. ( si false le terme : ACTORSSET_ID est utilisé )
-        'IOBEYAURL' : 'https://devptf.iobeya.com', //ptf @cap en 3.4
-        'ROOM_NAME' : 'CAP - SIAé', //ptf @cap en 3.4
+        'IOBEYAURL' : 'https://10.211.55.36', //ptf @cap en 3.4
+        'ROOM_NAME' : 'PROJETS-TEST', //ptf @cap en 3.4
         'BOARDSTOSYNC' :  [ // Tableaux de iObeya utilisés
             'SuiviCoproj',
             'SuiviBSU',
@@ -64,7 +70,7 @@ var SYNC_PROPERTIES_MAP = {
         'LISTLOG_TITLE' : "lst_logsyncactions", // attention aux espaces
         'RIDALIST_URL' : '/sites/pfe/Lists/RIDA v2/MyItems.aspx',
         'ACTORLIST_TITLE' : 'lst_acteurs', // attention aux espaces
-        'AUTOUPDATE_DUEDATE' : 'true', // si absent ou #true => si la due date > date du jour => ajustement de la date à ce  jour.
+        'AUTOUPDATE_DUEDATE' : 'false', // si absent ou #true => si la due date > date du jour => ajustement de la date à ce  jour.
         'SHAREPOINTLIST_MATCHINGNAME': {
             "actortax" : "Acteurs", // ancien nom de colonne acteurs
             "actor" : 'acteurs0', // nouveau nom de colonne acteurs
@@ -93,7 +99,9 @@ var SYNC_PROPERTIES_MAP = {
             "datecreation" : "datecreation",
             "idrida" : "idrida", // id de l'object source
             "linkUrl" : "linkUrl",
-            "syncaction" : "syncaction"
+            "syncaction" : "syncaction",
+            "description" : "Body",		// Description de de la tâche
+            "details" : "details"		// Liste de sous-tâche ( converti dans le cas d'une card )
         },
         'ACTORLIST_MATCHINGNAME': { // table de correspondance des colonnes de la liste SP
             "actor" : "Acteur",
@@ -128,74 +136,107 @@ var SYNC_PROPERTIES_MAP = {
             "setName": "Escallation",
             "map": {
                 "Orange": {
-                    "target_url" :"https://devptf.iobeya.com",
-                    "target_room" : "CAP - SIAé",
+                    "target_url" :"https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_room" : "PROJETS-TEST",
                     "target_board" : "SuiviCoproj",
                     "target_dropZone": "Point d'attention"
                 },
                 "Blue": {
-                    "target_url" : "https://devptf.iobeya.com", //ptf @cap en 3.4
-                    "target_room" : "CAP - SIAé",
+                    "target_url" : "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_room" : "PROJETS-TEST",
                     "target_board" : "SuiviBSU",
                     "target_dropZone": "Point d'attention"
                 },
                 "Green": {
-                    "target_url" : "https://devptf.iobeya.com", //ptf @cap en 3.4
-                    "target_room" : "CAP - SIAé",
+                    "target_url" : "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_room" : "PROJETS-TEST",
                     "target_board" : "SuiviBOE",
                     "target_dropZone": "Point d'attention"
                 },
                 "Red": {
-                    "target_url" : "https://devptf.iobeya.com", //ptf @cap en 3.4
-                    "target_room" : "CAP - SIAé",
+                    "target_url" : "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_room" : "PROJETS-TEST",
                     "target_board" : "Developpement - Interne",
                     "target_dropZone": "Point d'attention"
-                },
-                "White": {
-                    "target_url" : "URL_PLATFORME_A_SPECIFIER", // Une autre platforme avec une seule room
-                    "target_room" : "ROOM_A_SPECIFIER",
-                    "target_board" : "BOARD_A_SPECIFIER",
-                    "target_dropZone": "DROPZONE_A_SPECIFIER"
-                },
-                "Black": {
-                    "target_url" : "URL_PLATFORME_A_SPECIFIER", // Une autre platforme avec plusieurs rooms
-                    "target_room" : "ROOM_A_SPECIFIER",
-                    "target_board" : "BOARD_A_SPECIFIER",
-                    "target_dropZone": "DROPZONE_A_SPECIFIER"
                 }
-
             }
         },
         'IOBEYANOTE_MAPPING' : {
-            'title': { // dans iObeya: champ en haut
-                'iobeya_parent': 'props',
+            'label0': { // dans iObeya: champ en haut (old title)
+				'class': 'com.iobeya.dto.BoardNoteDTO', // filtre le type d'objet auquel il s'applique.
+                'iobeya_parent': 'props',			
                 'type': 'concat',
                 'rida_field': ['projet', 'chantier'],
                 'concatString': '::',
                 'emptyString': '***'
             },
             'content': {  // dans iObeya: champ du centre
+				'class': 'com.iobeya.dto.BoardNoteDTO',
                 'iobeya_parent': 'props',
                 'type': 'text',
                 'rida_field': 'subject'
             },
-            'responsible': {  // dans iObeya: champ en bas à gauche
+            'label1': {  // dans iObeya: champ en bas à gauche
+				'class': 'com.iobeya.dto.BoardNoteDTO',
                 'iobeya_parent': 'props',
                 'type': 'numeric',
                 'rida_field': 'resteafaire',
                 'unit': ' J/H (RAF)'
             },
-            'date': {  // dans iObeya: champ en bas à droite
+            'label2': {  // dans iObeya: champ en bas à droite
+				'class': 'com.iobeya.dto.BoardNoteDTO',
                 'iobeya_parent': 'props',
                 'type': 'date',
                 'rida_field': 'dueDate'
             },
             'workload': {  // dans iObeya: champ invisible
+				'class': 'com.iobeya.dto.BoardNoteDTO',
                 'iobeya_parent': 'props',
                 'type': 'numeric',
                 'rida_field': 'workload',
                 'unit': ' J/H (Estim)'
+            },
+			'title': { // le titre de la card
+				'class': 'com.iobeya.dto.BoardCardDTO',
+                'iobeya_parent': 'props',
+                'type': 'text',
+                'rida_field': 'subject'
+            },
+			'description': { // le titre de la card
+				'class': 'com.iobeya.dto.BoardCardDTO',
+                'iobeya_parent': 'props',
+                'type': 'text',
+                'rida_field': 'description'
+            },
+            'metric': {   // dans card iObeya
+				'class': 'com.iobeya.dto.BoardCardDTO',
+				'iobeya_parent': 'props',
+                'type': 'numeric',
+                'rida_field': 'resteafaire',
+                'unit': ' J/H (RAF)'
+            },			
+            'endDate': {  // dans card iObeya
+				'class': 'com.iobeya.dto.BoardCardDTO',
+                'iobeya_parent': 'props',
+                'type': 'datepassthrough', // format en date unix. ( attendu pour la card )
+                'rida_field': 'dueDate'
+            },
+			'priority': {  // dans iObeya: champ en bas à droite
+				'class': 'com.iobeya.dto.BoardCardDTO',
+                'iobeya_parent': 'props',
+                'type': 'boolean',
+                'rida_field': 'firmDeadline'
             }
+
+//note: le  
+/*	props card
+title:"titre carte"		
+description:"description de la carte"
+endDate:1524135600000
+metric:"100"
+priority:true
+*/		
+			
         } // 'IOBEYANOTE_MAPPING'
     }, // default
     'second': {
@@ -211,8 +252,14 @@ var SYNC_PROPERTIES_MAP = {
             'Programme - Acceleration' ] ,
         'LISTSHAREPOINT_TITLE' : "Chantier Program Acceleration", // attention aux espaces
         'RIDALIST_URL' : '/sites/pfe/Lists/Chantier Program Acceleration/MyItems.aspx',
+    },
+	'dgsic': {
+        'inherits': 'default',
+        'BOARDSTOSYNC' :  [ // Tableaux de iObeya utilisés
+            'Defense-Plateforme' ] ,
+        'LISTSHAREPOINT_TITLE' : "SUIVI-Defense-Plateforme", // attention aux espaces
+        'RIDALIST_URL' : '/sites/pfe/Lists/DGSIC/MyItems.aspx',
     }
-
 };
 
 // Enumération contenant l'ensemble des actions de synchronisation

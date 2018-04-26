@@ -1,6 +1,9 @@
 /**
  Change log...
 
+// version mai 2017
+
+
  //version septembre 2017
 
  Réécriture et refactoring du code pour permettre que plusieurs plateformes iObeya peuvent maintenant être connectées a une liste sharepoint. La nouvelle façons de faire permet de gérer une structure "connextion à une plateforme" qui peux être multiple.
@@ -766,9 +769,13 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
 
                 // On vérifie également s'il faut réajuster la dueDate du coté object iObeya ?
                 // Comme le mapping des champs est souple, il faut vérifier que la propriété 'duedate' est bien utilisée dans cette note iObeya
-                if (duedateautoupdate)
-                    for (var ii in IOBEYANOTE_MAPPING)  // on loop dans le IOBEYANOTE_MAPPING
-                        if (IOBEYANOTE_MAPPING[ii].rida_field === 'dueDate') { // dueDate est mappé / existe ?
+                if (duedateautoupdate){
+                    for (var ii in IOBEYANOTE_MAPPING){ // on loop dans le IOBEYANOTE_MAPPING
+
+						if ( IOBEYANOTE_MAPPING[ii].class !== iObeyaObject['@class']) // on filtre sur le type d'objet
+							continue;
+	
+						  if (IOBEYANOTE_MAPPING[ii].rida_field === 'dueDate') { // dueDate est mappé / existe ?
                             var iObeyaDueDateProperty; // "réference de la propriété javascript.
                             // on récupère la "reference" de la propriété DueDATE dans la note iObeya
                             if (IOBEYANOTE_MAPPING[ii].hasOwnProperty("iobeya_parent"))
@@ -777,26 +784,38 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                                 iObeyaDueDateProperty = iObeyaObject[ii]; //propriété en accès directe
 
                             //Maintenant on s'assure que l'entrée iObeya sera mise à jour, seulement si date de mise à jour
-                            if ( iObeyaDueDateProperty != null )
-                                // Conversion vers format anglais pour faire passer la variable au constructeur Date
-                                iObeyaDueDateProperty = reverseDate(iObeyaDueDateProperty);
-                                if ( Date.parse(iObeyaDueDateProperty) < Math.round(new Date().getTime()) )
-                                { // on compare les date
+                            if ( iObeyaDueDateProperty instanceof String || !isNaN(iObeyaDueDateProperty) ){
+                                // on effectue les conversions de format selon le type d'entrée
+                                if (iObeyaDueDateProperty instanceof String)
+									iObeyaDueDatePropertyval = Date.parse(reverseDate(iObeyaDueDateProperty));
+								else 
+									iObeyaDueDatePropertyval = iObeyaDueDateProperty;
+
+                                if ( iObeyaDueDatePropertyval < Math.round(new Date().getTime()) )  { // on compare les date
                                     console.log("Duedate :  < date du jour ( RIDA) ");
-                                    if (noteModificationDate > parseInt(ridaObject.modificationDate)) { // seulement si normalement l'iObeya devait être mis à jour
-                                        iObeyaDueDateProperty = Math.round(new Date().getTime());
+                                   
+									if (noteModificationDate > parseInt(ridaObject.modificationDate)) { // seulement si normalement l'iObeya devait être mis à jour    
+										iObeyaDueDatePropertyval = Math.round(new Date().getTime()); // on met à jour la date
                                         console.log("Duedate : réajustée automatiquement à la date du jour (node iObeya)");
                                         duedateupdated = true;
-                                        noteModificationDate = Math.round(new Date().getTime()); // En forcant la date de modif > on s'assure que l'objet iObeya (et ensuite le rida qui systématiquement rafraichie) seront mis à jour
 
-                                        // Mise à jour de la propriété "date d'échéance" de la note iObeya
-                                        iObeyaObject.props.date = prettyDate(new Date (noteModificationDate));
-
+										if (iObeyaDueDateProperty instanceof String) // si originellement la valeur était un string on reconverti la valeur en string
+											iObeyaDueDatePropertyval = prettyDate(new Date (noteModificationDate));
+										
+										// on place la valeur dans le champs
+										if (IOBEYANOTE_MAPPING[ii].hasOwnProperty("iobeya_parent"))
+                                			iObeyaObject[ IOBEYANOTE_MAPPING[ii]["iobeya_parent"] ][ii]=iObeyaDueDatePropertyval; // utilise un object/array intermédiaire
+                            			else
+                                			iObeyaObject[ii]=iObeyaDueDatePropertyval; //propriété en accès directe
+										
                                         iObeyaObject.toreupdate = true; // on force la remise à jour de la note avec la nouvelle donnée.
                                     }
-                                }
-                        }
-
+                                } //if ( iObeyaDueDateProperty <
+							  } //if ( iObeyaDueDateProperty instanceof String || !isNaN(iObeyaDueDateProperty) )
+							} // if (IOBEYANOTE_MAPPING[ii].rida_field === 'dueDate') {
+						} // for
+					} // if (duedateautoupdate)
+				
                 // On fait les comparaisons de dates
                 // important :  faut tenir compte d'une TOLERANCEINTERVAL, car la synchronisation des serveurs peut ne pas être parfaite + latence internet.
 
@@ -840,7 +859,10 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
         for (var iniObeya = 0; iniObeya < iObeyaNodes.length; iniObeya++) {
             iObeyaObject = iObeyaNodes[iniObeya]; // on tente de trouver le noeud Rida correspondant
 
-            if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO") {
+            if ( // note(s) ou card
+				iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO"||
+				iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO"
+			   ) {
                 syncObject = null;
                 ridaObject = getRidaObjectByiObeyaId(nodesRida, iObeyaObject.id);
                 // Cas n°6 : clône de notes ? (présence d'un sticker spécial)
@@ -872,7 +894,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                         }
                     } // if ( ridaObject.PanneauiObeya.toLowerCase() != iObeyaObject.boardname.toLowerCase() )
                 } // else if (ridaObject == null)
-            } // c'est une note if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO")
+            } // c'est une note if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" || iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" )
         } // loop array d'objets iObeya
 
         // A cette étape la liste des CRUD de synchronisations est complète.
@@ -1118,7 +1140,6 @@ function enrichSyncInfoFromiObeyaObject(iObeyaObject, iObeyaNodes, syncElement) 
 
     var tempRidaObject = mapIObeyaToRidaObject(iObeyaObject, iObeyaNodes);
 
-
     syncElement.modificationDate = iObeyaObject.modificationDate;
     syncElement.datecreation = iObeyaObject.creationDate;
     syncElement.PanneauiObeya = iObeyaObject.boardname;
@@ -1137,7 +1158,10 @@ function enrichSyncInfoFromiObeyaObject(iObeyaObject, iObeyaNodes, syncElement) 
 function updateRollListToRefesh(iObeyaConnectedPlatform, iObeyaObject) {
 //on regarde si le roll existe dejà dans la liste courante
     var found = -1, roll,statusObject;
-    if (iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO") { // pour accélérer on ne traite que les boards ( les stickers etc... sont forcéments sur une note )
+    if (//modifié
+		iObeyaObject['@class'] === "com.iobeya.dto.BoardNoteDTO" ||
+		iObeyaObject['@class'] === "com.iobeya.dto.BoardCardDTO" 
+	) { // pour accélérer on ne traite que les notes / cards ( les stickers etc... sont forcéments sur une note/card )
         statusObject = findNoteStatus(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes); // on récupère le status et le roll
 
         for (var ii in iObeyaConnectedPlatform.rollsToRefresh) { // on scanne la liste existante
@@ -1186,7 +1210,7 @@ function parseStatus(status) {
 }
 
 // Fonction utilitaires à déplacer dans un js idoine
-// permet d'appeler les fonctions passer en paramètre les unes après les autres
+// permet d'appeler les fonctions passées en paramètres les unes après les autres
 // array de fonction ou noeud simple
 // verifier si les variables de contexte sont bien présentes
 /*
@@ -1238,11 +1262,12 @@ function createNoteIniObeya(iObeyaConnectedPlatform, ridaObj, uid, iObeyaNodeToC
         console.log("Création d'un nouveau post-it dans iObeya");
         var escallationSticker = null;
         var iObeyaOverlapping = null;
-
-        // Initialisation de l'object Notes
+		var helper;
+        
+		// Initialisation de l'object Notes
         var newNote = {};
-        newNote['@class'] = "com.iobeya.dto.BoardNoteDTO";
-        newNote.id = uid;
+	
+		newNote.id = uid;
         newNote.isAnchored = false;
         newNote.isLocked = false;
         newNote.linkLabel = "";
@@ -1261,13 +1286,23 @@ function createNoteIniObeya(iObeyaConnectedPlatform, ridaObj, uid, iObeyaNodeToC
         newNote.y = 0;
         newNote.zOrder = 0;
 
-        var helper;
-
         if (iObeyaNodeToClone) {
             helper = createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone);
         } else {
+			// on détermini quel type d'objet iObeya il faut créer
+			newNote['@class'] = "com.iobeya.dto.BoardNoteDTO"; // par default
+			// modifié
+			// si l'objet RIDA possède une description ou des détails on utilise une card
+			if ( (ridaObj.description ) || (ridaObj.details ) ) {
+				newNote['@class'] = "com.iobeya.dto.BoardCardDTO";
+				var typ1= typeof ridaObj.description;
+				var typ2= typeof ridaObj.details;				
+			}
+				
+			
             helper = createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj);
-            // cf. rouleau saturé
+            
+			// cf. rouleau saturé
             if (helper === null) {
                 // retourner null pour pouvoir tester dans la fonction supérieur
                 return null;
@@ -1297,37 +1332,28 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
 
     newNote.color = NOTE_DEFAULT_COLOR;
     newNote.linkUrl = "";
-    newNote.props.content = ""; // charge en J/H
-    newNote.props.title = ""; // due date
-    newNote.props.responsible = ""; // target date
-    newNote.props.date = ""; // undisplayed label "workload".
-    newNote.props.workload = "";
+	newNote.linkLabel  = "" ;
+	newNote.target_url  = iObeyaConnectedPlatform.target_url;
+	   
+    var l_boardid = getBoardidFromRidaObj(iObeyaConnectedPlatform,ridaObj);  //Permet de récupérer le nom du tableau pour l'objet à créer
+    var roll = findRollbyLabelName(iObeyaConnectedPlatform.iObeyaNodes, ridaObj.status, l_boardid); // Zone d'atterrissage
 
-    if (ridaObj.creator != null)
-        newNote.creator = ridaObj.creator;
-    newNote.creationDate = ridaObj.creationDate;
-
-    //Permet de récupérer le nom du tableau pour l'objet à créer
-    var l_boardid = getBoardidFromRidaObj(iObeyaConnectedPlatform,ridaObj);
-
-    // Zone d'atterrissage
-    var roll = findRollbyLabelName(iObeyaConnectedPlatform.iObeyaNodes, ridaObj.status, l_boardid);
-
-    // Place le contenu "coeur de la note" : les 4 champs visibles
-    // note : la fonction pourrait évoluer vers d'autres natures de note
-    newNote = fillNoteForiObeya(newNote, ridaObj);
     // on place les valeurs suivante au sein de la note l'id
     // ces deux propriétés ne sont pas standard dans iObeya,
     // mais sont utilisés pour la logique au sein du code
     newNote.boardid = l_boardid;
+    newNote.roomid = iObeyaConnectedPlatform.activeRoom.id;
     newNote.boardname = getBoardNameFromRidaObj(iObeyaConnectedPlatform,ridaObj);
     newNote.roomname = iObeyaConnectedPlatform.activeRoom.name;
-    newNote.roomid = iObeyaConnectedPlatform.activeRoom.id;
-    newNote.target_url  = iObeyaConnectedPlatform.target_url;
+	newNote.asset = null;
 
     // Initialisation du container  (la note est rattachée au "containeur" du board)
     newNote.container = getBoardElementContainerFromBoardName(iObeyaConnectedPlatform,ridaObj.PanneauiObeya);
-
+    
+	// Place le contenu "coeur de la note/card" : les x champs visibles
+    // note : la fonction pourrait évoluer vers d'autres natures de note
+	newNote = fillNoteForiObeya(newNote, ridaObj);
+	
     // Récupérer tous les éléments qui chevauchent le post-it
     // on crée les autres éléments dont on a besoin
     var overlappingElements = findOverlappingElements(newNote, iObeyaConnectedPlatform.iObeyaNodes);
@@ -1393,7 +1419,8 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
 function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
 
     var targetiObeyaConnectedPlatform = iObeyaConnectedPlatform.parent;
-
+	
+	newNote['@class'] = iObeyaNodeToClone['@class'];
     newNote.color = iObeyaNodeToClone.color;
     newNote.height = iObeyaNodeToClone.height;
     newNote.width = iObeyaNodeToClone.width;
@@ -1403,14 +1430,32 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
     newNote.modificationDate = Math.round(new Date().getTime()) ; iObeyaNodeToClone.modificationDate; // TODO mettre la date de la note source ?
     newNote.linkUrl = getObjectCurrentBoardUrl(iObeyaConnectedPlatform, iObeyaNodeToClone); // les infos de la note actuelle
     newNote.label = getObjectCurrentBoardLabel(iObeyaConnectedPlatform, iObeyaNodeToClone); // les infos de la note actuelle
-    newNote.props.content = iObeyaNodeToClone.props.content; // charge en J/H
-    newNote.props.title = iObeyaNodeToClone.props.title; // due date
-    newNote.props.responsible = iObeyaNodeToClone.props.responsible; // target date
-    newNote.props.date = iObeyaNodeToClone.props.date; // undisplayed label "workload".
-    newNote.props.workload = iObeyaNodeToClone.props.workload;
-    newNote.creator = iObeyaNodeToClone.creator;
+	newNote.creator = iObeyaNodeToClone.creator;
     newNote.creationDate = iObeyaNodeToClone.creationDate;
 
+	
+	//pour la note
+	if (iObeyaNodeToClone['@class'] === "com.iobeya.dto.BoardNoteDTO"){
+		newNote.props.content = iObeyaNodeToClone.props.content; // charge en J/H
+		newNote.props.title = iObeyaNodeToClone.props.title; // due date
+		newNote.props.responsible = iObeyaNodeToClone.props.responsible; // target date
+		newNote.props.date = iObeyaNodeToClone.props.date; // undisplayed label "workload".
+		newNote.props.workload = iObeyaNodeToClone.props.workload;
+		newNote.props.layoutId = iObeyaNodeToClone.props.layoutId;
+		}
+	
+	//pour la card
+	if (iObeyaNodeToClone['@class'] === "com.iobeya.dto.BoardCardDTO") {
+		newNote.assignees = iObeyaNodeToClone.assignees;
+		newNote.checklist = iObeyaNodeToClone.checklist;
+		newNote.entityType = iObeyaNodeToClone.entityType ;
+		newNote.displayTimestamp = iObeyaNodeToClone.displayTimestamp;
+		newNote.props.description = iObeyaNodeToClone.props.description;
+		newNote.props.endDate = iObeyaNodeToClone.props.endDate;
+		newNote.props.metric = iObeyaNodeToClone.props.metric;
+		newNote.props.priority = iObeyaNodeToClone.props.priority;
+		}
+		
     // on récupère les informations depuis l'escallation sticker (si pas présent on ne fait rien)
     // idéalement ce travail devrait être fait en amont de cet appel
     var iObeyaOverlapping = findOverlappingElements(iObeyaNodeToClone, iObeyaConnectedPlatform.iObeyaNodes);
@@ -1518,7 +1563,20 @@ function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaO
         var l_boardid = getBoardidFromRidaObj(iObeyaConnectedPlatform, ridaObj);        //
         // Mise à jour des champs de la NOTE
         // On met à jour le contenu de la note ( par les attributs ex: container, etc...)
-        var note = fillNoteForiObeya(iObeyaObj, ridaObj);
+		
+		iObeyaObj['@class'] = "com.iobeya.dto.BoardNoteDTO";	
+		if ( (ridaObj.description || ridaObj.details) ){
+
+			if(ridaObj.description)
+				if ( ridaObj.description.length ) 
+				iObeyaObj['@class'] = "com.iobeya.dto.BoardCardDTO";	
+
+			if(ridaObj.details)
+				if ( ridaObj.details.length ) 
+				iObeyaObj['@class'] = "com.iobeya.dto.BoardCardDTO";								
+			}
+		
+		var note = fillNoteForiObeya(iObeyaObj, ridaObj);
         //
         // Mise à jour (en mémoire) des éléments au dessus de la note : pourcentage, priorite, acteurs
         // iObeyaOverlapping est un array() créé via findOverlappingElements( ); créée dans la fonction précédente
@@ -1654,7 +1712,43 @@ function fillNoteForiObeya(note, ridaObj) {
         throw new InterfaceException("Le champ \"modifier\" ne figure pas dans la liste des champs RIDA à synchroniser.");
 
     // on traite les données
+	
     try {
+		note.props={}; // on initialise l'object
+		
+		if (note['@class'] === "com.iobeya.dto.BoardNoteDTO"){  //pour la note
+			note.props.content = ""; // content( old content)
+			note.props.label0 = ""; // due date (old title)
+			note.props.label2 = ""; // target date (old responsible)
+			note.props.label1 = ""; // undisplayed label "workload". ( old date)
+			note.props.label3 = ""; // pour le cas où on utilise une note à 5 champs
+			note.props.workload = "";
+			note.props.layoutId=NOTE_DEFAULT_LAYOUTID;
+			note.entityType="BoardNote";
+			note.assignees=[];
+			note.checklist= [];
+			note.name="Note";
+			}
+	
+		if (note['@class'] === "com.iobeya.dto.BoardCardDTO"){ 	//pour la card
+			note.assignees=[];
+			note.checklist= [];
+			note.entityType="BoardCard";
+			//newNote.displayTimestamp=false;
+			note.props.description = "";
+			note.props.endDate = null;
+			note.props.metric = "";
+			note.props.priority = "";
+			note.boardId=  note.boardid;
+			note.boardName = note.boardname;
+			note.roomName=note.roomname;
+			note.name="Carte";
+			}
+
+		if (ridaObj.creator != null)
+			note.creator = ridaObj.creator;
+		note.creationDate = ridaObj.creationDate;
+
         // Traitement du statut (statut par défaut)
         if (!ridaObj.status) // Si bug: avant:  if(ridaObj.status == null)
             ridaObj.status = DROP_ZONE;
@@ -1667,25 +1761,42 @@ function fillNoteForiObeya(note, ridaObj) {
             updateDate = new Date().getTime();
         note.modificationDate = updateDate;
 
-        // Traitement de la couleur
-        if (ridaObj.firmDeadline)
-        // Echéance ferme : post-it rouge
-            note.color = NOTE_WARNING_COLOR;
-        else if (note.color === NOTE_WARNING_COLOR && ! ridaObj.firmDeadline)
-        // Cette tâche n'a plus d'échéance ferme : post-it jaune
-            note.color = NOTE_DEFAULT_COLOR;
-
-        // Post-it
-        note.height = NOTE_DEFAULT_HEIGHT;
-        note.width = NOTE_DEFAULT_WIDTH;
-
         /* New Method for version 3.3 for iObeya*/
         if (ridaObj.modifier !== null)
             note.modifier = ridaObj.modifier;
 
+		//if (note['@class'] === "com.iobeya.dto.BoardNoteDTO" )
+		//if (note['@class'] === "com.iobeya.dto.BoardCardDTO" )
         /* New properties for version 3.3 for iObeya*/
         mapRidaToIObeya(ridaObj, note);
+		
+		//Si c'est une card
+		if (note['@class'] === "com.iobeya.dto.BoardCardDTO"){
+			var dobreak=true;
+        	note.height = CARD_DEFAULT_HEIGHT;
+        	note.width = CARD_DEFAULT_WIDTH;
+			
+			if (ridaObj.firmDeadline) 
+				note.color = CARD_WARNING_COLOR;			
+			else if (note.color === CARD_WARNING_COLOR && ! ridaObj.firmDeadline)
+				note.color = CARD_DEFAULT_COLOR;			
+			} 
+	
+		//Si c'est une note
+		if (note['@class'] === "com.iobeya.dto.BoardNoteDTO"){
+		    // Traitement de la couleur
+			if (ridaObj.firmDeadline)
+			// Echéance ferme : post-it rouge
+				note.color = NOTE_WARNING_COLOR;
+			else if (note.color === NOTE_WARNING_COLOR && ! ridaObj.firmDeadline)
+			// Cette tâche n'a plus d'échéance ferme : post-it jaune
+				note.color = NOTE_DEFAULT_COLOR;
 
+			// Post-it
+			note.height = NOTE_DEFAULT_HEIGHT;
+			note.width = NOTE_DEFAULT_WIDTH;
+		}		
+		
         return note;
     } catch (e) {
         throw e;
@@ -1703,6 +1814,7 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 
     // Parcours de tous les champs du mapping
     for (var key in IOBEYANOTE_MAPPING) {
+		
         // 'mapingItem' = 'content'|'title'|'responsible'|...
         var mappingItem = IOBEYANOTE_MAPPING[key];
 
@@ -1717,6 +1829,12 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
             console.info("L'objet '" + key + "' de transformation de iObeya vers RIDA ne possède pas de champ 'rida_field'. C'est peut-être normal.");
             continue;
         }
+		
+		// on filtre par type de propriété sur la valeur applyto qui correspond au type
+		// si ce n'est le bon type on passe.
+		
+		if ( mappingItem.class !== iObeyaNote['@class'] )
+					continue;
 
         // Initialisation à partir du template iObeya
         var type = mappingItem.type;
@@ -1774,8 +1892,23 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
 
                 // Mapping de date : 1 -> 1 ; avec formatage en JJ/MM/YYYY
                 case "date":
-                    data = new Date(ridaObj.dueDate).format(DATE_FORMAT);
+                    data = new Date(ridaObj[rida_field]).format(DATE_FORMAT);
                     break;
+					
+				// pour la card, il faut pouvoir passer la date en format unix directement	
+				case "datepassthrough": 
+					if( ridaObj[rida_field] ){
+                    	data = ridaObj[rida_field];							
+					}
+                    break;
+				case "boolean": 
+					if( ridaObj[rida_field] == true || ridaObj[rida_field] == "true" || ridaObj[rida_field] == "1" || ridaObj[rida_field] == 1){
+                    	data = true; 						
+					} else {
+						data = false;					
+					}
+                    break;					
+					
                 default:
                     break;
             } // end switch
