@@ -150,10 +150,10 @@ function isStatusLabel(iObeyaObject) {
 }
 
 /*** Retourne vrai si l'élément passé en paramètre n'est pas une card / note  ***/
-function isNotNote(iObeyaObject) {// TODO:modifié
-	return !(
-			iObeyaObject['@class'] == "com.iobeya.dto.BoardNoteDTO" ||
-			iObeyaObject['@class'] == "com.iobeya.dto.BoardCardDTO"  
+function isNotNote(iObeyaObject) {
+	return (
+			iObeyaObject['@class'] !== "com.iobeya.dto.BoardNoteDTO" &&
+			iObeyaObject['@class'] !== "com.iobeya.dto.BoardCardDTO"  
 			);
 }
 

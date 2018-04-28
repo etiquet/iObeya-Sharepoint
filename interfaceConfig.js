@@ -27,8 +27,8 @@ var LABEL_POSITION_MARGIN_TOP = -5;
 var LABEL_DEFAULT_SETNAME = "Label";
 var LABEL_DEFAULT_NAME = "Acteurs";
 
-var STICKER_DEFAULT_WIDTH = 112;
-var STICKER_DEFAULT_HEIGHT = 112;
+var STICKER_DEFAULT_WIDTH = 80;
+var STICKER_DEFAULT_HEIGHT = 80;
 
 var NOTE_DEFAULT_MARGIN_TOP  = 150;
 var NOTE_DEFAULT_MARGIN  = 20;
@@ -42,6 +42,9 @@ var IOBEYA_URL_PATH_2 = "/public/#/fr/board/";
 var CLONED_NOTE_PREFIX = 'cloned_';
 var RIDA_CREATED_NOTE_PREFIX = 'rida_';
 
+var STATUS_CREATED = 'créé';
+var STATUS_SYNC = 'sync.';
+var STATUS_DEl = 'eff.';
 /***
  Section : Paramétrage spécificiques aux plateformes
  commenter / décommenter les sections selon la plateforme
@@ -56,7 +59,7 @@ var SYNC_PROPERTIES_MAP = {
         'ACTORSSET_ID' : '62bc99d5-39ae-4cae-9d6d-4e5c00c2ae30', // "ActeurTerme" TERMSET
         'ACTORSSUBSET_ID' : ["157a0c3f-2085-4f56-b224-85771c3c3af1", "44259241-48cc-407c-92fb-803ee33c6d16", "d19c768a-5e41-44f7-8ed7-d05216f62770", "0cc10e7e-117c-4a43-a9fe-7b5d78c89979"], // Important : doit être dans le même ordre que la liste des panneaux à synchroniser...
         'USE_ACTORSSUBSETLIST' : 'false', // utilisation ou pas des sous-listes de la taxonomie des acteurs. ( si false le terme : ACTORSSET_ID est utilisé )
-        'IOBEYAURL' : 'https://10.211.55.36', //ptf @cap en 3.4
+        'IOBEYAURL' : 'https://35.204.44.80', //ptf @cap en 3.4
         'ROOM_NAME' : 'PROJETS-TEST', //ptf @cap en 3.4
         'BOARDSTOSYNC' :  [ // Tableaux de iObeya utilisés
             'SuiviCoproj',

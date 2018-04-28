@@ -584,7 +584,7 @@ function onQueryFailed_test(sender, args) {
  * @returns {Boolean}
  */
 
-function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote) {
+function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote,ok_text) {
     var error = 0;
     try {
         var l_oList = iObeyaConnectedPlatform.oList;
@@ -608,6 +608,16 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote) 
 
         //Mise à jour du tableau
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
+		
+		if (ok_text.length <= 0 ) 
+			ok_text="ok";
+		
+		if (error>0){
+			error=error+'errs';
+			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], error);
+		} else 
+			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], ok_text);
+
         oListItem.update();
 
         console.log("Create CAML query : Update RIDA sur l'id iObeya :" + iObeyaNote.id + " errors count :" + error + " modif date :" + modifdate);
@@ -699,6 +709,44 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
 				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
 			}
 		
+		if (iObeyaNote['@class'] === "com.iobeya.dto.BoardCardDTO"){// pour la card seulement
+			/*var priority=false;
+			
+			iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props)
+				iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props.priority)
+								priority=iObeyaNote.props.priority;
+			
+			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], priority);*/
+			
+			if (iObeyaNote.checklist instanceof Array ){
+				// on tri l'arraus
+				var sortcheck=[];
+				for(var key in iObeyaNote.checklist)
+					if(iObeyaNote.checklist.hasOwnProperty(key))
+						sortcheck.push(iObeyaNote.checklist[key]);
+
+				sortcheck.sort(function(a, b) {
+						 return a.index-b.index; // compare numbers
+						 });
+
+				var details_text="<div>\n";
+
+				if( SHAREPOINTLIST_MATCHINGNAME["details"] ){// seulement si la valeur 'details' est déclarée
+						 for (var iii in sortcheck){ // on itère sur l'array
+							 var chk_lst = sortcheck[iii];
+							 if(chk_lst.status){
+								details_text+='<span style="text-decoration&#58;line-through;">'; //
+								details_text+=chk_lst.label; 
+								details_text+='</span>';
+							 } else
+								details_text+=chk_lst.label;
+							 details_text+="<br>\n";
+						 } // for (var iii in sortcheck){
+					details_text+="</div>";
+					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["details"], details_text);
+					} //if( SHAREPOINTLIST_MATCHINGNAME["details"] )
+			}  //if (iObeyaNote.checklist instanceof Array )
+		}
         error = mapIObeyaToRida(oListItem,iObeyaNote); // affectation dynamique des champs.
 
         if (error) { // il y a eu un pb d'interpretation
@@ -762,7 +810,7 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
         // Si on doit mettre à jour l'objet iObeya (ex. en cas d'erreur)
         var updateIObeya = false;
 
-        if (data) {
+        if (data != null ) {
             // En fonction du type de traitement voulu pour le champ de la note
             switch (type) {
                 // Mapping simple, 1 -> 1
@@ -819,19 +867,21 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
                     if (mappingItem.hasOwnProperty('unit'))
                         unit = mappingItem.unit;
 
-                    var numbers = filterNumbers(data);
-                    if (numbers !== null) { // OK, car data initalisé à '' et filterNumbers('') = null
-                        // on place la valeur dans le RIDA
-                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], numbers);
-                        // on met à jour l'objet iObeya en mémoire avec le texte au bout
-                        data = numbers + unit;
-                    } else {
-                        // Choisir : log | changement de val. iObeya | alert
-                        //console.error('Champ de type "numeric" définit sans nombre de jours');
-                        data = "/!\\ " + data; // Ajout de /!\ au champ pour alerter de l'erreur
-                        error++;
-                    }
-                    updateIObeya = true;
+					if (data.length>0){
+						var numbers = filterNumbers(data);
+							if (numbers !== null) { // OK, car data initalisé à '' et filterNumbers('') = null
+								// on place la valeur dans le RIDA
+								oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], numbers);
+								// on met à jour l'objet iObeya en mémoire avec le texte au bout
+								data = numbers + unit;
+							} else {
+								// Choisir : log | changement de val. iObeya | alert
+								data = "/!\\ " + data; // Ajout de /!\ au champ pour alerter de l'erreur
+								error++;
+							}
+						updateIObeya = true;
+						}
+                    
                     break;
 
                 case 'date':
@@ -850,17 +900,16 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
 					
 				// pour la card, il faut pouvoir passer la date en format unix directement	
 				case "datepassthrough": 
-					if (data){
-                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data)) ;							
-						}
+					if (!isNaN(data) )
+                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data)) ;				
                     break;
 				case "boolean": 
-					if (data)
 						if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1"  ) {
                         	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], true);
 						} else {
                         	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], false);						
 						}
+					updateIObeya = true;
                     break;	
 
                 default:

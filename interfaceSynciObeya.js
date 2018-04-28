@@ -972,6 +972,7 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                         // TODO: rendre la fonction appellée "pure" en sortant ce calcul à l'extérieur de la fonction ?
                         result = createNoteIniObeya(iObeyaConnectedPlatform, null, l_uid, iObeyaObject);
                         iObeyaConnectedPlatform.nodesToCreate = iObeyaConnectedPlatform.nodesToCreate.concat(result);
+						iObeyaConnectedPlatform.iObeyaNodes = iObeyaConnectedPlatform.iObeyaNodes.concat(result); //ajoute l'objet pour pouvoir calculer correctement le placement suivant 
                         syncObject.status = status_done;
 
                         // On enrichie la synclist avec les infos pour permettre un log des changements si l'option est activée
@@ -991,7 +992,9 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                         iObeyaConnectedPlatform.nodesToCreate = iObeyaConnectedPlatform.nodesToCreate.concat(l_iObObjt);
                         // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
                         // l_iObObjt[0]  car l_iObObjt est un array de noeud, le premier est toujours la note
-                        createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, l_iObObjt[0]);// on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
+						if (STATUS_CREATED == null)
+							STATUS_CREATED="C";
+                        createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, l_iObObjt[0],STATUS_CREATED+">iO");// on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
                         syncObject.status = status_done;
 
                         // on enrichie la synclist
@@ -1004,7 +1007,9 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                 case syncType.todo_synciObeya :
                     l_iObObjt = updateNoteIniObeya(iObeyaConnectedPlatform, ridaObject, iObeyaObject, iObeyaOverlapping);
                     iObeyaConnectedPlatform.nodesToUpdate = iObeyaConnectedPlatform.nodesToUpdate.concat(l_iObObjt);
-                    createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, l_iObObjt[0]); // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
+					if (STATUS_SYNC == null)
+							STATUS_SYNC="S";
+                    createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, l_iObObjt[0],STATUS_SYNC+">iO"); // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
                     syncObject.status = status_done;
 
                     // on enrichie la synclist
@@ -1014,7 +1019,9 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                 case syncType.todo_createRida :
                     // Si c'est une note clonée alors on ne la crée pas côté SP
                     if (!iObeyaObject.id.startsWith(CLONED_NOTE_PREFIX)) {
-                        result = createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaObject); // construction de la requete CAML Sharepoint.
+						if (STATUS_CREATED == null)
+							STATUS_CREATED="S";
+                        result = createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaObject,STATUS_CREATED+">Sh"); // construction de la requete CAML Sharepoint.
                         syncObject.status = updateSyncStatus(result); // s'il y a erreur => on flag en erreur
                         // forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
                         // a factoriser avec celui de create rida...
@@ -1031,7 +1038,9 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
 
                     // Si c'est une note clonée alors on la synchronise pas côté SP
                     if (!syncObject.idiObeya.startsWith(CLONED_NOTE_PREFIX)) {
-                        result = createCAMLupdateRidaEntry(iObeyaConnectedPlatform, syncObject.idRida, iObeyaObject); // construction de la requete CAML Sharepoint.
+						if (STATUS_SYNC == null)
+							STATUS_SYNC="S";
+                        result = createCAMLupdateRidaEntry(iObeyaConnectedPlatform, syncObject.idRida, iObeyaObject,STATUS_SYNC+">Sh"); // construction de la requete CAML Sharepoint.
                         syncObject.status = updateSyncStatus(result);
                         // forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
                         // a factoriser avec celui de create rida...
@@ -1358,16 +1367,19 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
     // on crée les autres éléments dont on a besoin
     var overlappingElements = findOverlappingElements(newNote, iObeyaConnectedPlatform.iObeyaNodes);
     newNote = placeElement(roll, newNote, iObeyaConnectedPlatform.iObeyaNodes, overlappingElements);
-
-    // Si l'élement n'est pas placé (rouleau saturé)
+	
+	// Si l'élement n'est pas placé (rouleau saturé)
     if (newNote === null) {
         return null;
     }
 
-    // Etiquette du responsable
+	//ajoute l'objet dans la liste en mémoire pour pouvoir calculer correctement le placement des objets suivants
+	iObeyaConnectedPlatform.iObeyaNodes.push(newNote);
+
+	// Etiquette du responsable
     var newLabel = null;
-    if (ridaObj.actor
-        && ridaObj.actor.hasOwnProperty(length)) {
+    if (ridaObj.hasOwnProperty('actor') )
+		if ( ridaObj.actor.length >0 ) {
         newLabel = createActorLabel(iObeyaConnectedPlatform,ridaObj);
         newLabel = placeLabel(newLabel, newNote);
         iObeyaConnectedPlatform.iObeyaNodes.push(newLabel);
@@ -1779,7 +1791,44 @@ function fillNoteForiObeya(note, ridaObj) {
 			if (ridaObj.firmDeadline) 
 				note.color = CARD_WARNING_COLOR;			
 			else if (note.color === CARD_WARNING_COLOR && ! ridaObj.firmDeadline)
-				note.color = CARD_DEFAULT_COLOR;			
+				note.color = CARD_DEFAULT_COLOR;		
+			
+			// on traite les details du RIDA, il faut construire un array.
+			var buff = ridaObj.details; // on récupère les données
+			
+			var checklisttext ="";
+			var checklisttextsplit ="";
+			var checklistflag =false;
+
+			
+			if(buff)
+			  if(buff.length){
+				note.checklist=new Array(); // array vide
+				
+				checklisttextsplit=buff.split(/<\/span>|<br>/); // il faut splitter les lignes selon les <br> </span>
+				for (var iii=0; iii < checklisttextsplit.length; iii++){
+					
+					var checklistobject ={};// array vide	
+					checklisttext =parseNoteText(checklisttextsplit[iii]).replace(/\n|\r/g,'');
+					// si la ligne est barré -> items checké
+
+					// on prépare l'array
+					if (checklisttext.length){
+						if( checklisttextsplit[iii].indexOf('<span') >= 0 && checklisttextsplit[iii].indexOf('line-through') >= 0 ) 
+							checklistflag=true;
+							else checklistflag =false;	
+						checklistobject['@class']="com.iobeya.dto.ChecklistItemDTO";
+						checklistobject.isReadOnly=false;
+						checklistobject.index=iii+1;
+						checklistobject.status=checklistflag;					
+						checklistobject.label=checklisttext;	
+						checklistobject.parentId=note.id;
+						checklistobject.entityType = "ChecklistItem";
+						note.checklist.push(checklistobject);
+						}
+				  
+					} // for iii
+			  }	// if buff.length
 			} 
 	
 		//Si c'est une note

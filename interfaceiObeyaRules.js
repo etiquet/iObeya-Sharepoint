@@ -235,11 +235,11 @@ function placeLabel(label, note) {
 	label.y = note.y ; // par défaut en haut
 	
 	if (note['@class'] === "com.iobeya.dto.BoardNoteDTO"){// modifié
-		label.y = note.y + LABEL_POSITION_MARGIN_TOP + label.height;		// si c'est une note l'acteur est positionné sur le bas
+		label.y = note.y + LABEL_POSITION_MARGIN_TOP ;		// si c'est une note l'acteur est positionné sur le bas
 		}
 	
 	if (note['@class'] === "com.iobeya.dto.BoardCardDTO"){// modifié
-		label.y = note.y + note.height + LABEL_POSITION_MARGIN_TOP ;		// si c'est une card l'acteur est positionné sur le bas
+		label.y = note.y + note.height + LABEL_POSITION_MARGIN_TOP -label.height ;		// si c'est une card l'acteur est positionné sur le bas
 		}
 	
     label.zOrder = note.zOrder + 1;
@@ -249,15 +249,15 @@ function placeLabel(label, note) {
 /*** Détermine l'emplacement où doit se trouver le Sticker "% achevé" à la création ***/
 function placePercentCompleteSticker(sticker, note) {
     sticker.x = note.x + note.width - sticker.width/4;
-    sticker.y = note.y + note.height + sticker.height*2;
+    sticker.y = note.y + note.height/2 - sticker.height;
     sticker.zOrder = note.zOrder + 2;
     return sticker;
 }
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "Priority" à la création ***/
 function placePrioritySticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width/2;
-    sticker.y = note.y + note.height + sticker.height;
+    sticker.x = note.x + note.width - sticker.width/4;
+    sticker.y = note.y + note.height/2 ;
 	sticker.zOrder = note.zOrder + 3;
     return sticker;
 }
