@@ -1,27 +1,27 @@
 /***
- 
+
  Authentification sur la plateforme IObeya
  Cette fonction est appelé par d'autres méthode qui précise la fonction appellée en call back.
  Dans le déroulement nominal du script, le call back est la fonction qui qui gère la synchro : function syncNotes(iObeyaConnectedPlatform){
- 
+
  NOTE :  IMPORTANT IMPORTANT IMPORTANT cette portion de code fait largement appel à CORS
  cf. https://en.wikipedia.org/wiki/Cross-origin_resource_sharing
- 
+
  "definition wikipedia :" Cross-origin resource sharing (CORS) is a mechanism that allows restricted resources (e.g. fonts) on a web page to be requested from another domain outside the domain from which the first resource was served.[1]"
- 
- Cela nécessite que le serveur iObeya soit correctement configuré 
+
+ Cela nécessite que le serveur iObeya soit correctement configuré
  ( ce n'est pas activé par défaut il faut paramétrer le CORS dans l'interface d'admin d'iObeya, fct dispo depuis la v3.4)
- 
+
  Le tricks... CORS (le navigateur) execute également un pre-fetch (rerequete) si la requete n'est pas vue comme standard ( post / put / content type non standard )
  le comportement des navigateurs est différent selon les versions pour le prefetch, parfois les credentials (cookies) ne sont pas envoyés.
- L'erreur est donc un rejet par la plateforme iObeya. 
- Deplus : Les implémentations diffèrent selon la version du navigateurs, vérifier que la version du navigateur est récente. 
+ L'erreur est donc un rejet par la plateforme iObeya.
+ Deplus : Les implémentations diffèrent selon la version du navigateurs, vérifier que la version du navigateur est récente.
  ( typiquement eviter la v45 de FireFox )
- 
+
  Attention donc à cet aspect.
- 
+
  TODO : modifier les fonctions d'appels à la plateforme pour permettre un call XHTML via le navigateur ou jsnode (google)
- 
+
  ***/
 
 
@@ -29,9 +29,7 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
     var myxmlr, myxmlr2;
     var response = null;
     var iObeyaStruct = {};
-
     console.log("iObeyaPlatformLoginAndGetItems Called");
-
     if ((!iObeyaConnectedPlatform) && (!iObeyaConnectedPlatform.PtfURL)) {
         throw new InterfaceException("iObeyaPlatformLoginAndGetItems :: Pas de paramètre de plateforme passée ou erreur");
     }
@@ -46,13 +44,13 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
         return; // on sort d'ici sans code de retour
     }
 
-    // Dans le cas on ce n'est pas connecté on lance la connection et la/les fonctions postloginMethods...
-    // 1er appel de connexion à la plateforme pour se logguer.
+// Dans le cas on ce n'est pas connecté on lance la connection et la/les fonctions postloginMethods...
+// 1er appel de connexion à la plateforme pour se logguer.
 
     myxmlr = new XMLHttpRequest();
     myxmlr.open("GET", iObeyaConnectedPlatform.IOBEYAURL + "/s/j/messages/in", true);
     myxmlr.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=utf-8");
-    myxmlr.withCredentials = true; // comprendre : les cookies sont passés avec les headers 
+    myxmlr.withCredentials = true; // comprendre : les cookies sont passés avec les headers
     myxmlr.onerror = function (event, iObeyaConnectedPlatform) {
          XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
     };
@@ -75,14 +73,12 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
             myxmlr2.open("GET", iObeyaConnectedPlatform.IOBEYAURL + "/s/remoteconfig?f=json", true);
             myxmlr2.setRequestHeader("Content-type", "application/json"); // declanche un prefetch CORS
             myxmlr2.withCredentials = true;
-
             myxmlr2.onload = function (event) { // TODO : tester si event passe bien
                 try {
                     response = JSON.parse(this.responseText);
                     iObeyaConnectedPlatform.client_version = response.server.version;
                     iObeyaConnectedPlatform.connected = response.server.logged; // ( doit être à true)
                     iObeyaConnectedPlatform.connection_message = this.statusText;
-
                     if (iObeyaConnectedPlatform.connected && iObeyaConnectedPlatform.client_version) {
                         getRooms(iObeyaConnectedPlatform); // on récupère les rooms, appel asynchrone....
                     } else {
@@ -93,7 +89,6 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
                     catchAllThrow(e, loginfailedMethods);
                 }
             };
-
             myxmlr2.onerror = function (event) {
                  XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
             };
@@ -105,7 +100,6 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
 
 
     myxmlr.send();
-
 } // fonction async donc pas de code de retour
 
 /***
@@ -114,11 +108,11 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
  ***/
 
 /*
- * 
+ *
  * @param {type} e : object message error
  * @param {type} loginfailedMethods : call back si erreur
  * @returns {undefined}
- * 
+ *
  */
 
 function catchAllThrow(e, loginfailedMethods) {
@@ -130,10 +124,10 @@ function catchAllThrow(e, loginfailedMethods) {
 }
 
 /*
- 
+
  Fonction qui gère les erreurs dans un appel https://
  Cette fonction permet le reste du code de synchronisation de se poursuivre
- Appelé dans le cadre du contexte d'une connexion iObeya on inscrit la raison de l'erreur dans le 
+ Appelé dans le cadre du contexte d'une connexion iObeya on inscrit la raison de l'erreur dans le
  */
 
 function XMLHttpErrorHandler(event, iObeyaConnectedPlatform) { // TODO à vérifier....
@@ -151,15 +145,14 @@ function XMLHttpErrorHandler(event, iObeyaConnectedPlatform) { // TODO à vérif
 /*** Récupération des rooms ***/
 
 /*
- * 
+ *
  * @param {type} iObeyaConnectedPlatform - le contexte de la fonction
  * @returns {undefined}
- * 
+ *
  */
 
 function getRooms(iObeyaConnectedPlatform) {
     var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
-
     iObeyaConnectedPlatform.activeRoom = null;
     console.log("Fetch rooms");
     iObeyaConnectedPlatform.rooms = new Array(); //TODO : a disparaite
@@ -169,17 +162,14 @@ function getRooms(iObeyaConnectedPlatform) {
     myxmlr.setRequestHeader("Content-type", "application/json"); // déclanche un prefetch CORS
     myxmlr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
     myxmlr.withCredentials = true;
-
     myxmlr.onerror = function (event, iObeyaConnectedPlatform) {
          XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
     };
-
     myxmlr.onload = function () {
         try {
 
             var roomsArray = JSON.parse(this.responseText);
             iObeyaConnectedPlatform.connection_message = this.statusText;
-
             roomsArray.forEach(function (e) {
                 if (e['@class'] === "com.iobeya.dto.RoomDTO") {
                     iObeyaConnectedPlatform.rooms.push({"id": e.id, "name": e.name});
@@ -189,7 +179,6 @@ function getRooms(iObeyaConnectedPlatform) {
                     }
                 }
             });
-
             if (iObeyaConnectedPlatform.activeRoom === null) {
                 throw new InterfaceException("La room \"" + iObeyaConnectedPlatform.ROOM_NAME + "\" n'existe pas dans la plateforme iObeya à l'URL : " + iObeyaConnectedPlatform.IOBEYAURL);
             }
@@ -208,8 +197,8 @@ function getRooms(iObeyaConnectedPlatform) {
 /*** Récupération des boards ***/
 
 /*
- Note : A la lecture de la nouvelle documentation développeur v3.4, la structure d'un objet board, précise 
- 
+ Note : A la lecture de la nouvelle documentation développeur v3.4, la structure d'un objet board, précise
+
  {
  "@class": "com.iobeya.dto.BoardNoteDTO", "color": 13158655,
  "container": {
@@ -235,10 +224,10 @@ function getRooms(iObeyaConnectedPlatform) {
  "y": 1254,
  "zOrder": 6
  }
- 
- Container:thecontainervalueofagivenboardelementisusuallytheelementcontainer associated to a board. 
+
+ Container:thecontainervalueofagivenboardelementisusuallytheelementcontainer associated to a board.
  Instead of sending the board's json object, we need to pass an EntityReferenceDTO with the board element container ID
- 
+
  Il faut utiliser le container.id pour la création, modification d'éléments dans un board(notes / stickers / labels ?)
  */
 
@@ -250,36 +239,29 @@ function getRooms(iObeyaConnectedPlatform) {
 
 function getBoards(iObeyaConnectedPlatform) {
     var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
-
     console.log("Fetch boards");
     if (iObeyaConnectedPlatform.boards instanceof Array)
-        iObeyaConnectedPlatform.boards.length = 0;  // raz
+        iObeyaConnectedPlatform.boards.length = 0; // raz
     else
         iObeyaConnectedPlatform.boards = new Array();
-
     if (iObeyaConnectedPlatform.iObeyaNodes instanceof Array)
         iObeyaConnectedPlatform.iObeyaNodes.length = 0; // raz
     else
         iObeyaConnectedPlatform.iObeyaNodes = new Array();
-
     // le nombre attendu de boards.
     iObeyaConnectedPlatform.countBoardtoload = iObeyaConnectedPlatform.BOARDSTOSYNC.length;
-
     var myxmlr = new XMLHttpRequest();
     myxmlr.open("GET", iObeyaConnectedPlatform.IOBEYAURL + "/s/j/rooms/" + iObeyaConnectedPlatform.activeRoom.id + "/details", true);
     myxmlr.setRequestHeader("Content-type", "application/json");
     myxmlr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
     myxmlr.withCredentials = true;
-
     myxmlr.onerror = function (event, iObeyaConnectedPlatform) {
          XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
     };
-
     myxmlr.onload = function () {
         try {
             iObeyaConnectedPlatform.connection_message = this.statusText;
             iObeyaConnectedPlatform.roomallboards = [];
-
             var tempboard = JSON.parse(this.responseText); // on stocke cette valeur, si besoin plus tard
 
             // on loop sur l'Array
@@ -295,14 +277,13 @@ function getBoards(iObeyaConnectedPlatform) {
                             iObeyaConnectedPlatform.boards.push(elmnt); // on ajoute la board dans l'array
 
                             // Note : on determine quelle l'id de la board par defaut dans l'Array de configuration. ( le dernier de l'array )
-                            // permet d'avoir une valeur par defaut dans les recherches par la suite, 
+                            // permet d'avoir une valeur par defaut dans les recherches par la suite,
                             // typiquement si l'utilisateur utilise un mauvais nom de panneau dans le RIDA.
                             // Dans ce cas on défini que c'est le premier du tableau de paramétrage qui est la valeur par défaut
                             // mais comme les boards d'iObeya peuvent être dans un ordre différent, il faut déterminer l'index.
 
                             if (elmnt.name === iObeyaConnectedPlatform.BOARDSTOSYNC[0])
                                 iObeyaConnectedPlatform.defaultboard_index = iObeyaConnectedPlatform.iObeyaNodes.length - 1;
-
                             iObeyaConnectedPlatform.boardfound++;
                             getNodes(iObeyaConnectedPlatform, elmnt.id, elmnt.name);
                         }
@@ -313,34 +294,33 @@ function getBoards(iObeyaConnectedPlatform) {
             catchAllThrow(e, loginfailedMethods);
         }
     };
-
     myxmlr.send(); // on lance l'appel de la méthode asynchrone.
-    waitallBoardLoaded(iObeyaConnectedPlatform); // Attente du changement des boards  
+    waitallBoardLoaded(iObeyaConnectedPlatform); // Attente du changement des boards
 }
 
 function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
     var myxmlr = null;
     var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
     console.log("Getting nodes");
-
     myxmlr = new XMLHttpRequest();
     myxmlr.open("GET", iObeyaConnectedPlatform.IOBEYAURL + "/s/j/boards/" + boardid + "/details", true);
     myxmlr.setRequestHeader("Content-type", "application/json");
     myxmlr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
     myxmlr.withCredentials = true;
-
     myxmlr.onerror = function (event, iObeyaConnectedPlatform) {
          XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
     };
     myxmlr.onload = function () {
 
         try {
+            var startlength = iObeyaConnectedPlatform.iObeyaNodes.length; // longueur de la liste avant d'ajouter ce panneau
+
             var data = JSON.parse(this.responseText);
             iObeyaConnectedPlatform.connection_message = this.statusText;
             for (var i = 0; i < data.length; i++) {
                 // Stickers : récupération de l'ID de l'asset
 
-                if (data[i]['@class'] == "com.iobeya.dto.StickerToolSetItemDTO") {
+                if (data[i]['@class'] === "com.iobeya.dto.StickerToolSetItemDTO") {
                     for (var value in PERCENTAGE_IOBEYASTICKER_MAPPING.map) {
                         if (PERCENTAGE_IOBEYASTICKER_MAPPING.map[value].name == data[i].label) {
                             PERCENTAGE_IOBEYASTICKER_MAPPING.map[value].id = data[i].asset.id;
@@ -358,35 +338,99 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
                 data[i].boardid = boardid;
                 data[i].roomname = iObeyaConnectedPlatform.activeRoom.name;
                 data[i].roomid = iObeyaConnectedPlatform.activeRoom.id;
-                data[i].target_url  = iObeyaConnectedPlatform.IOBEYAURL;
+                data[i].target_url = iObeyaConnectedPlatform.IOBEYAURL;
+                data[i].overlappingNotesChain = []; // les notes chainées  (donc potentiellement liées )
+
+                if (isNote(data[i])) { // portion traitement sur note
+                    if (data[i].hasOwnProperty("entityType")) {   // petite correction du bogue v3.6.6 ( le @class peut être erroné )
+                        if (data[i].entityType === "BoardCard")
+                            data[i]['@class'] = "com.iobeya.dto.BoardCardDTO";
+                    }
+                } // if data[i]['@class'] ==
 
                 // Objets dessinables et tri des notes visibles
                 // zorder est la condition pour filtrer un objet visible des panneaux d'autres choses.
-                if (data[i].hasOwnProperty("zOrder")) {
-                    iObeyaConnectedPlatform.iObeyaNodes.push(data[i]);
-					
-					if ( // Pour permettre le debug
-						data[i]['@class'] == "com.iobeya.dto.BoardCardDTO" ||
-						data[i]['@class'] == "com.iobeya.dto.BoardNoteDTO") {
-						var dobreakfornotes=true;
-						if( data[i].entityType)
-							if( data[i].entityType =="BoardCard")
-								data[i]['@class'] = "com.iobeya.dto.BoardCardDTO";
-						
-					}
-                }
-            }
+                // on injecte l'objet dans la liste interne.
 
-            // On sort les données reçes
-            iObeyaConnectedPlatform.iObeyaNodes.sort(function (obj1, obj2) {
-                return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);
-            });
+                if (data[i].hasOwnProperty("zOrder"))
+                    iObeyaConnectedPlatform.iObeyaNodes.push(data[i]);
+
+                // On sort les données reçues
+                iObeyaConnectedPlatform.iObeyaNodes.sort(function (obj1, obj2) {
+                    return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);
+                });
+
+
+
+            }// for (var i = 0; i < data.length
+
+
+
+
+            // Maintenant que le panneau est chargé entièrement, on fait une passe pour déterminer la hierarchie / lien s'il y a des cards/ superposés
+            // L'algorythme recherche l'ensemble des notes superposée et qui s'enchaine.
+            // Cette liste est partagée avec l'ensemble des notes qui se suivent
+
+            if (iObeyaConnectedPlatform.iObeyaNodes.length - startlength > 0) {  // des nodes ont été ajoutées dans ce passage ?
+
+                if (startlength < 1) // gestion de la première borne.
+                    startlength = 1;
+
+
+
+                for (var idw = startlength - 1; idw < iObeyaConnectedPlatform.iObeyaNodes.length - 1; idw++) {  // on boucle sur l'ensemble des nodes ajoutés
+                    if (isNote(iObeyaConnectedPlatform.iObeyaNodes[idw])) { // traitement uniquement des notes / cards
+
+                        if (iObeyaConnectedPlatform.iObeyaNodes[idw].hasOwnProperty("overlappingNotesChain")) // code défensif
+                            if (iObeyaConnectedPlatform.iObeyaNodes[idw].overlappingNotesChain.length === 0) { // seulement s'il n'y a pas déjà eu une liste chainée
+
+                                var l_underlappingNotes = [];
+                                var chainedlist = [];
+                                // Récupère (recursivement) les objets de type "notes" au dessus de la note/card en cours => liste chainée
+                                l_underlappingNotes = findOverlappingNotes(l_underlappingNotes, iObeyaConnectedPlatform.iObeyaNodes[idw], iObeyaConnectedPlatform.iObeyaNodes);
+
+                                if (l_underlappingNotes !== null)
+                                    if (l_underlappingNotes.length > 0) {
+
+                                        // On place le noeud "racine" en premier dans la liste
+
+                                        var l_list = [];
+                                        l_list.id = iObeyaConnectedPlatform.iObeyaNodes[idw].id; // l'id iObeya
+                                        l_list.listId = 0; // l'id dans la liste
+                                        l_list.props = iObeyaConnectedPlatform.iObeyaNodes[idw].props; // pas indispensable, juste facillitant pour le debug
+                                        l_list.zOrder = iObeyaConnectedPlatform.iObeyaNodes[idw].zOrder;  // pas indispensable, juste facillitant pour les algorythmes
+                                        chainedlist.push(l_list); // on ajoute le noeud à l'array
+
+                                        for (var idx = 1; idx <= l_underlappingNotes.length; idx++) {  // on créé un array du chainage
+                                            var l_list = [];
+                                            l_list.id = l_underlappingNotes[idx - 1].id; // l'id iObeya
+                                            l_list.listId = idx; // l'id dans la liste
+                                            l_list.props = l_underlappingNotes[idx - 1].props; // pas indispensable, juste facillitant pour le debug
+                                            l_list.zOrder = l_underlappingNotes[idx - 1].zOrder;  // pas indispensable, juste facillitant pour les algorythmes
+                                            chainedlist.push(l_list); // on ajoute le noeud à l'array
+                                            chainedlist.sort(function (obj1, obj2) {
+                                                return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);
+                                            }); // pas forcément obligatoire...
+                                        }
+
+                                        for (var iidx in chainedlist) {
+                                            var l_idx = chainedlist[iidx].id;
+                                            var l_idx2 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, l_idx);
+                                            iObeyaConnectedPlatform.iObeyaNodes[l_idx2].overlappingNotesChain = chainedlist; // on place la (même) liste dans les notes/cards chainées
+                                        }
+                                    }
+
+                            }// if( data[i].overlappingNotesChain.length === 0){
+                    } //  if (!isNotNote(iObeyaConnectedPlatform.iObeyaNodes[idw])) { /
+                }//for (var idw = startlength - 1; idw < iObeyaConnectedPlatform
+            }// if (iObeyaConnectedPlatform.iObeyaNodes - startlength > 0)
 
             iObeyaConnectedPlatform.countBoardtoload--; // pour gérer l'asynchronisme on décompte le compteur global
+
         } catch (e) {
             catchAllThrow(e, loginfailedMethods);
         }
-    };
+    }; // on load
 
     myxmlr.send(); // on lance la requete en asynchrone...
 }
@@ -403,21 +447,18 @@ function waitallBoardLoaded(iObeyaConnectedPlatform) {
             + "boards to load, awaited (BOARDSTOSYNC): "
             + iObeyaConnectedPlatform.BOARDSTOSYNC.length
             );
-
     iObeyaConnectedPlatform.waitcount = 0; // as global counter
 
     var timerId = window.setInterval(function (iObcotf) {
 
-        if (!iObcotf.countBoardtoload) {  // >0 tant que tous les panneaux n'ont pas été lu...   
+        if (!iObcotf.countBoardtoload) {  // >0 tant que tous les panneaux n'ont pas été lu...
 
             // on lance ici la fonctionne de synchro
             clearInterval(timerId);
             console.log("Loaded board complete" + iObcotf.boardfound);
-
             var postloginMethods = iObcotf.postloginMethods;
             if (postloginMethods)
                 callCallbackFunctions(postloginMethods);
-
             // nextRequest(); // TODO, @etiquet on commente pour voir si cela fonctionne sans....
             // on dépile maintenant la queue des requetes async à lancer à la fin
             // TODO à retravailler ??? s'il y a plusieurs plateforme / room en jeu.
@@ -461,7 +502,7 @@ function escapeCharacters(str) {
 /*** Formatage des données (contrôle des caractères spéciaux) ***/
 
 /*
- * 
+ *
  * @param {type} str
  * @returns {String}
  */
@@ -469,36 +510,34 @@ function escapeCharacters(str) {
 function parseNoteText(str) {
     str = escapeCharacters(str);
     //str = str.replace(/[^a-z0-9 áàâäãåçéèêëíìîïñóòôöõúùûüýÿæœÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸÆŒ\s_\-,.?!';]/ig, '');
-	// supprime potentiellement tous les tags html => TODO:à vérifier !!!
-	str=str.replace(/(<\?[a-z]*(\s[^>]*)?\?(>|$)|<!\[[a-z]*\[|\]\]>|<!DOCTYPE[^>]*?(>|$)|<!--[\s\S]*?(-->|$)|<[a-z?!\/]([a-z0-9_:.])*(\s[^>]*)?(>|$))/gi, ''); 
+    // supprime potentiellement tous les tags html => TODO:à vérifier !!!
+    str = str.replace(/(<\?[a-z]*(\s[^>]*)?\?(>|$)|<!\[[a-z]*\[|\]\]>|<!DOCTYPE[^>]*?(>|$)|<!--[\s\S]*?(-->|$)|<[a-z?!\/]([a-z0-9_:.])*(\s[^>]*)?(>|$))/gi, '');
     return str;
 }
 
-/*** 
- Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur 
+/***
+ Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur
  retourne -1 si la date n'est pas bien formatée
- 
+
  ***/
 
 /*
- * 
+ *
  * @param {type} date
  * @returns {Number|String}
  */
 
 function parseDate(date) {
     var l_date, sep, str = date, defyear, defmonth, defday, day, month, year;
-
     // On calcule l'année par défaut
     defyear = Date.now();
-
     // on verifie que l'on a une pattern de date
-    // JJMMAA JJMMAAAA JJ/MM/AA JJ/MM/AAAA JJ MM AA JJ MM AAAA JJ-MM-AA JJ-MM-AAAA    
+    // JJMMAA JJMMAAAA JJ/MM/AA JJ/MM/AAAA JJ MM AA JJ MM AAAA JJ-MM-AA JJ-MM-AAAA
     if (!/\d{1,2}[\/]\d{1,2}[\/]\d{2,4}/.test(date))
         if (!/\d{1,2}[\ ]\d{1,2}[\ ]\d{2,4}/.test(date))
             if (!/\d{1,2}[\-]\d{1,2}[\-]\d{2,4}/.test(date))
                 if (!/\d{6,8}/.test(date))
-                    return -1; // erreur sur le format; 
+                    return -1; // erreur sur le format;
 
     sep = str.indexOf("/");
     if (sep > 0) {
@@ -513,10 +552,9 @@ function parseDate(date) {
                 l_date = str.split(" "); // décomposition
 
             } else {
-                // on test si 6 ou 8 chiffre qui se suivent
+// on test si 6 ou 8 chiffre qui se suivent
                 var reg = /[0-9]+/g; // on ne garde que les chiffres
                 var date = reg.exec(date).toString();
-
                 if (date.length === 8) {
                     var day = parseInt(date.substr(0, 2));
                     var month = parseInt(date.substr(2, 2));
@@ -531,14 +569,11 @@ function parseDate(date) {
                     var year = parseInt(date.substr(4, 4));
                     day = day.toString();
                     month = month.toString();
-
                     if (day.length < 2)
                         day = "0" + day.toString();
                     if (month.length < 2)
                         month = "0" + month;
-
                     return day + "/" + month + "/" + year.toString();
-
                 } else if (date.length === 6) {
                     var day = parseInt(date.substr(0, 2));
                     var month = parseInt(date.substr(2, 2));
@@ -553,26 +588,24 @@ function parseDate(date) {
                     var year = parseInt(date.substr(4, 2));
                     var y2 = new Date;
                     y2 = parseInt(y2.getFullYear());
-                    year = Math.round(y2 / 100) * 100 + year;  // on prend centaibe  courante
+                    year = Math.round(y2 / 100) * 100 + year; // on prend centaibe  courante
                     day = day.toString();
                     month = month.toString();
-
                     if (day.length < 2)
                         day = "0" + day.toString();
                     if (month.length < 2)
                         month = "0" + month;
-
                     return day + "/" + month + "/" + year.toString();
                 }
-                // else
+// else
 
-                return -1; // erreur sur le format; 
+                return -1; // erreur sur le format;
             }
         }
     }
 
-    // on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
-    //.getFullYear()
+// on regarde combien de block, 1 block = jour, 2 block = jour / mois, 3 block jour / mois / année.
+//.getFullYear()
 
     switch (l_date.length) {
 
@@ -589,10 +622,8 @@ function parseDate(date) {
                 day = 1;
             day = day.toString();
             month = month.toString();
-
             if (day.length < 2)
                 day = "0" + day.toString();
-
             if (month.length < 2)
                 month = "0" + month;
             var year = parseInt(l_date[2]);
@@ -600,12 +631,11 @@ function parseDate(date) {
 
                 var y2 = new Date;
                 y2 = parseInt(y2.getFullYear());
-                year = Math.round(y2 / 100) * 100 + year;  // on prend centaibe  courante
+                year = Math.round(y2 / 100) * 100 + year; // on prend centaibe  courante
             }
 
             return day + "/" + month + "/" + year.toString();
             break;
-
         case 2:
             var day = parseInt(l_date[0]);
             var month = parseInt(l_date[1]);
@@ -619,7 +649,6 @@ function parseDate(date) {
                 day = 1;
             day = day.toString();
             month = month.toString();
-
             if (day.length < 2)
                 day = "0" + day.toString();
             if (month.length < 2)
@@ -628,13 +657,10 @@ function parseDate(date) {
             var y2 = new Date;
             var year = y2.getFullYear();
             return day + "/" + month + "/" + year.toString();
-
             break;
-
         default: // pas une bonne date
             return -1; // erreur sur le format.
             break;
-
     }
 
 }
@@ -642,7 +668,7 @@ function parseDate(date) {
 
 
 /* Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur
- * 
+ *
  * @param {type} date
  * @returns {String}
  */
@@ -651,7 +677,6 @@ function reverseDate(date) {
 
     var regex = /^(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.]((19|20)\d\d)$/;
     var match = date.match(regex);
-
     if (match === null || match === undefined) {
         return match;
     } else {
@@ -660,13 +685,12 @@ function reverseDate(date) {
 
 }
 
-/*** Formatage de la charge (valeur attendue : "DECIMAL STRING") 
+/*** Formatage de la charge (valeur attendue : "DECIMAL STRING")
  * @param {type} workload
  * @returns {filterNumbers.match}
  */
 function filterNumbers(workload) { // ne garde que les digits et ,
     var regex = /^([0-9]+(,[0-9]+)?)/, match = workload.match(regex);
-
     if (match === null || match === undefined) {
         return match;
     } else {
@@ -676,7 +700,7 @@ function filterNumbers(workload) { // ne garde que les digits et ,
 }
 
 /*** Fonction de callback appelée si une requête executeQueryAsync a échoué
- * 
+ *
  * @param {type} sender
  * @param {type} args
  * @returns {undefined}
@@ -711,22 +735,20 @@ function loadSyncConf(syncID) {
 
     try {
         var syncMap = SYNC_PROPERTIES_MAP[syncID];
-
         // On charge d'abord les propriétés héritées
         if (syncMap.hasOwnProperty('inherits') && syncMap.inherits) {
             loadSyncConf(syncMap.inherits); // Du récursif, pas de soucis car peu de profondeur
         }
 
-        // On a un objet sans parent : report des propriétés trouvées dans des variables globales de même nom
+// On a un objet sans parent : report des propriétés trouvées dans des variables globales de même nom
         var underscoresCapitals = /^[A-Z_]*$/; // On n'authorise que les majuscules et les underscores
         for (var property in syncMap) {
             if (!syncMap.hasOwnProperty(property) // Lève un warning d'inspection de code...
                     || !property.match(underscoresCapitals))
                 continue;
-
             if (syncMap[property].constructor === Object) {
-                // Si la variable globale 'property' n'existe pas, on la crée
-                // > window[x] = 12; équivaut à > x = 12; avec x variable globale
+// Si la variable globale 'property' n'existe pas, on la crée
+// > window[x] = 12; équivaut à > x = 12; avec x variable globale
                 if (!window.hasOwnProperty(property)) {
                     window[property] = {};
                 }
@@ -746,8 +768,8 @@ function loadSyncConf(syncID) {
     } catch (e) {
         throw e;
     }
-    // On a fait le mapping des propriétés trouvées.
-    // Si on est dans un appel récursif, la continuité de la fonction appelante va écraser/créer des propriétés
+// On a fait le mapping des propriétés trouvées.
+// Si on est dans un appel récursif, la continuité de la fonction appelante va écraser/créer des propriétés
 }
 
 /**
@@ -756,18 +778,18 @@ function loadSyncConf(syncID) {
  * la liste SharePoint LISTLOG_TITLE
  * @param dmyDate chaîne de caractères au format "DD/MM/YYYY"
  * @returns chaîne de caractères au format "MM/DD/YYYY" si @param valide, false sinon
-function convertDMYToMDY(dmyDate) {
+ function convertDMYToMDY(dmyDate) {
 
-    let dmyArray = dmyDate.split("/");
+ let dmyArray = dmyDate.split("/");
 
-    if ( (typeof dmyDate === 'string' || dmyDate instanceof String)
-        && !dmyArray.some(isNaN) )
-    {
-        return dmyArray[1] + '/' + dmyArray[0] + '/' + dmyArray[2];
-    }
+ if ( (typeof dmyDate === 'string' || dmyDate instanceof String)
+ && !dmyArray.some(isNaN) )
+ {
+ return dmyArray[1] + '/' + dmyArray[0] + '/' + dmyArray[2];
+ }
 
-    return null;
-}*/
+ return null;
+ }*/
 
 /**
  * Convertit un objet Date en une chaïne de caractères "JJ/MM/YYYY"
@@ -776,9 +798,8 @@ function convertDMYToMDY(dmyDate) {
  * @returns {string} "JJ/MM/YYYY"
  */
 function prettyDate(date) {
-    // getUTCMonth() renvoie un entier entre 0 et 11 donc + 1
-    // (cf https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getUTCMonth)
+// getUTCMonth() renvoie un entier entre 0 et 11 donc + 1
+// (cf https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getUTCMonth)
     var month = date.getUTCMonth() + 1;
-
     return date.getUTCDate() + "/" + month + "/" + date.getUTCFullYear();
 }

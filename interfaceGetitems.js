@@ -57,12 +57,15 @@ function formateFieldToExport(field) {
         }
 
         if (field instanceof SP.FieldUserValue) { 	//  type de donnée non traitée
-            if (field.hasOwnProperty("$5g_1")) // propriété contenant le nom de l'utilisateur 
+            return field.get_lookupValue(); 
+                        
+          /*  if (field.hasOwnProperty("$5g_1")) // propriété contenant le nom de l'utilisateur 
                 return field["$5g_1"];
             else
-                return "/!\\type non traite";
+                return "/!\\type non traite";*/
+            
         }
-
+ 
         var debug = true; // pour faire un beakpoint
         return field; // par defaut on transmet la valeur (on garde le type d'objet fourni)
 

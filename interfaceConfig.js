@@ -104,7 +104,8 @@ var SYNC_PROPERTIES_MAP = {
             "linkUrl" : "linkUrl",
             "syncaction" : "syncaction",
             "description" : "Body",		// Description de de la tâche
-            "details" : "details"		// Liste de sous-tâche ( converti dans le cas d'une card )
+            "details" : "details",		// Liste de sous-tâche ( converti dans le cas d'une card )
+            "predecessors":"Predecessors"
         },
         'ACTORLIST_MATCHINGNAME': { // table de correspondance des colonnes de la liste SP
             "actor" : "Acteur",

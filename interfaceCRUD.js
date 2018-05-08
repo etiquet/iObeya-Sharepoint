@@ -1,3 +1,5 @@
+/* global SHAREPOINTLIST_MATCHINGNAME */
+
 /**
  * Opérations CRUD iObeya
  */
@@ -20,20 +22,20 @@ var oListItem; //global why ?
  */
 
 function PostiObeyaNodes(iObeyaConnectedPlatform, iObeyaNodes) {
-    var jsonNote, xhttpr = [], iobcptfsentries = [],l_targeturl,found;
+    var jsonNote, xhttpr = [], iobcptfsentries = [], l_targeturl, found;
     var parentiocptfs = iObeyaConnectedPlatform.parent; // TODO: non utilisé, supprimé ?
-        
+
     // on crée un array d'entrée avec des #urls
     for (var ii in iObeyaNodes) {
-        
+
         // on récupère l'url cible de plateforme, par defaut url de la plateforme courante
         l_targeturl = (iObeyaNodes[ii].target_url == undefined || iObeyaNodes[ii].target_url == null) ? iObeyaConnectedPlatform.IOBEYAURL : iObeyaNodes[ii].target_url;
         found = -1;
-        
+
         for (var iii in iobcptfsentries) { // on scanne la liste existante
-            if (l_targeturl ===  iobcptfsentries[iii].target_url) {
+            if (l_targeturl === iobcptfsentries[iii].target_url) {
                 iobcptfsentries[iii].nodes.push(iObeyaNodes[ii]);// trouvée la plateforme on ajoute l'entrée aux nodes
-                found=1;
+                found = 1;
                 break;
             }
         }
@@ -54,7 +56,7 @@ function PostiObeyaNodes(iObeyaConnectedPlatform, iObeyaNodes) {
             console.log("Post (create/update) " + iobcptfsentries[ptf].nodes.length + "nodes à l'url :" + iobcptfsentries[ptf].target_url);
             // note: creation en bulk des éléments
             // pour simplifier la logique générale, on utilise seulement l'arrays de thread de iObeyaConnectedPlatform
-            xhttpr[ptf] = postJSONData(iObeyaConnectedPlatform,iobcptfsentries[ptf].target_url + "/s/j/elements", jsonNote); // note : ajoute la requête dans la queue
+            xhttpr[ptf] = postJSONData(iObeyaConnectedPlatform, iobcptfsentries[ptf].target_url + "/s/j/elements", jsonNote); // note : ajoute la requête dans la queue
             xhttpr[ptf].onload = function () {
                 if (this.status >= 400) {
                     console.log("erreur sur la requete " + this.responseText);
@@ -80,14 +82,14 @@ function PostiObeyaNodes(iObeyaConnectedPlatform, iObeyaNodes) {
  * TODO: dupliquer la méthode de tri des plateformes
  */
 function PutObeyaNodes(iObeyaConnectedPlatform, iObeyaNodes) {
-    var jsonNote,myxmlr;
+    var jsonNote, myxmlr;
 
     try {
         jsonNote = JSON.stringify(iObeyaNodes);
         console.log("Put (update) " + iObeyaNodes.length + "nodes à l'url :" + iObeyaConnectedPlatform.IOBEYAURL);
         // note: creation en bulk des éléments
 
-        myxmlr = putJSONData(iObeyaConnectedPlatform,iObeyaConnectedPlatform.IOBEYAURL + "/s/j/elements", jsonNote); // note : ajoute la requête dans la queue
+        myxmlr = putJSONData(iObeyaConnectedPlatform, iObeyaConnectedPlatform.IOBEYAURL + "/s/j/elements", jsonNote); // note : ajoute la requête dans la queue
 
         myxmlr.onload = function () {
             if (this.status >= 400) {
@@ -244,30 +246,30 @@ function commitiObeyaChanges(iObeyaConnectedPlatform) {
                 if (parent[prop].hasOwnProperty("IOBEYAURL")) // qui dispose de la propriété IOBEYAURL
                     if (parent[prop].connected) { // et connecté
 
-                         for (var ii in parent[prop].rooms) { // loops sur l'ensemble des rooms
+                        for (var ii in parent[prop].rooms) { // loops sur l'ensemble des rooms
 
-                                xhttpr[ii] = getJSONData(parent[prop], parent[prop].IOBEYAURL + "/s/j/meeting/commit/" + parent[prop].clientId
-                                        + "?roomId=" + parent[prop].rooms[ii].id
-                                        + "&boardId=" // si l'on laisse boardid vide toutes les boards de la room sont raffraichies // + iObeyaConnectedPlatform.boards[i].id
-                                        ); // requête jsonhttp Async, ajouter cette requêt dans la queue.
+                            xhttpr[ii] = getJSONData(parent[prop], parent[prop].IOBEYAURL + "/s/j/meeting/commit/" + parent[prop].clientId
+                                    + "?roomId=" + parent[prop].rooms[ii].id
+                                    + "&boardId=" // si l'on laisse boardid vide toutes les boards de la room sont raffraichies // + iObeyaConnectedPlatform.boards[i].id
+                                    ); // requête jsonhttp Async, ajouter cette requêt dans la queue.
 
-                                xhttpr[ii].onload = function () { // fonction Asynchrone appelée sur la fin de l'appel http.
+                            xhttpr[ii].onload = function () { // fonction Asynchrone appelée sur la fin de l'appel http.
 
-                                    var jsonResponse = JSON.parse(this.responseText);
-                                    console.log(jsonResponse);
-                                   
-                                    if (jsonResponse.result === "error") {
-                                         // TODO: à faire... traiter si la requete n'est pas OK...
-                                    }
-                                    nextRequest(iObeyaConnectedPlatform); // on dépile les requêtes... uniquement sur la ptfprincipale =>TODO:bascule les threads sur l'object racine
-                                };
+                                var jsonResponse = JSON.parse(this.responseText);
+                                console.log(jsonResponse);
 
-                                startQueue(iObeyaConnectedPlatform); // On déclenche la queue d'appel asynchrone pour réaliser le commit
+                                if (jsonResponse.result === "error") {
+                                    // TODO: à faire... traiter si la requete n'est pas OK...
+                                }
+                                nextRequest(iObeyaConnectedPlatform); // on dépile les requêtes... uniquement sur la ptfprincipale =>TODO:bascule les threads sur l'object racine
+                            };
 
-                            }
+                            startQueue(iObeyaConnectedPlatform); // On déclenche la queue d'appel asynchrone pour réaliser le commit
+
+                        }
 
                     }
-        
+
     } catch (e) {
         throw e;
     }
@@ -282,14 +284,14 @@ function commitiObeyaChanges(iObeyaConnectedPlatform) {
  * 
  * 
  if (elmnt instanceof Array && elmnt.hasOwnProperty("IOBEYAURL") ){
-                if (elmnt.connected === true) { // et si l'url est initialisée et connectée
-
-                    var debug = true;
-
-                }
-            }
-                           
-                                    */
+ if (elmnt.connected === true) { // et si l'url est initialisée et connectée
+ 
+ var debug = true;
+ 
+ }
+ }
+ 
+ */
 
 /*** Déclenchement la sérialisation de la file de requetes vers iObeya***/
 /*
@@ -337,7 +339,7 @@ function getJSONData(iObeyaConnectedPlatform, url) {
     l_xmlr = new XMLHttpRequest();
     l_xmlr.open("GET", url, true); // async = true
     l_xmlr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8'); // pour éviter CORS
-   // l_xmlr.setRequestHeader('Content-type', 'application/json');
+    // l_xmlr.setRequestHeader('Content-type', 'application/json');
     l_xmlr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     l_xmlr.withCredentials = true;
 
@@ -444,13 +446,13 @@ function CAMLUpdateSyncLogList(iObeyaConnectedPlatform) {  // On construit la re
             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["syncaction"], syncType.properties[iObeyaConnectedPlatform.synclist[ii].action].name);
 
         if (iObeyaConnectedPlatform.synclist[ii].datestamp != null)
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["datestamp"], new Date (iObeyaConnectedPlatform.synclist[ii].datestamp) );
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["datestamp"], new Date(iObeyaConnectedPlatform.synclist[ii].datestamp));
 
         if (iObeyaConnectedPlatform.synclist[ii].linkUrl != null)
             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["linkUrl"], iObeyaConnectedPlatform.synclist[ii].linkUrl);
 
         if (iObeyaConnectedPlatform.synclist[ii].datecreation != null)
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["datecreation"], new Date (iObeyaConnectedPlatform.synclist[ii].datecreation) );
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["datecreation"], new Date(iObeyaConnectedPlatform.synclist[ii].datecreation));
 
         if (iObeyaConnectedPlatform.synclist[ii].PanneauiObeya != null)
             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaConnectedPlatform.synclist[ii].PanneauiObeya);
@@ -464,10 +466,10 @@ function CAMLUpdateSyncLogList(iObeyaConnectedPlatform) {  // On construit la re
         // On convertit
         var dueDate = iObeyaConnectedPlatform.synclist[ii].dueDate;
         if (typeof dueDate !== 'number' && dueDate != null)
-            dueDate = new Date (reverseDate(dueDate));
+            dueDate = new Date(reverseDate(dueDate));
 
         if (dueDate != null)
-            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["dueDate"], new Date (dueDate) );
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["dueDate"], new Date(dueDate));
 
         if (iObeyaConnectedPlatform.synclist[ii].firmDeadline != null)
             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], iObeyaConnectedPlatform.synclist[ii].firmDeadline);
@@ -493,7 +495,7 @@ function CAMLUpdateSyncLogList(iObeyaConnectedPlatform) {  // On construit la re
         oListItem.update();
 
         clientContext.load(oListItem);
-        
+
         clientContext.executeQueryAsync(Function.createDelegate(this, this.onQuerySucceeded(oListItem)), Function.createDelegate(this, this.onQueryFailed));
 
     }
@@ -510,14 +512,11 @@ function CAMLUpdateSyncLogList(iObeyaConnectedPlatform) {  // On construit la re
  */
 
 function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
-    var error =0;
-    
+    var error = 0;
+
     try {
-        
-        
+
         var itemCreateInfo = new SP.ListItemCreationInformation();
-        // g_context=  new SP.ClientContext.get_current(); // on stocke le context SP courant
-         //   g_oList=get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
         var oListItem = g_oList.addItem(itemCreateInfo);
 
         // Récupérer les objets qui chevauchent la note / ou la card
@@ -536,8 +535,8 @@ function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
         // note: SHAREPOINTLIST_MATCHINGNAME est un array de translation entre le nom de la variable interne et la colonne de la liste SP.
         // voir fichier de conf.
         //TODO: test on place la même date dans les 2 champs
-        //var newdate = new Date(iObeyaNote.creationDate);
-        
+
+        var newdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
         var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
 
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], modifdate);
@@ -548,9 +547,19 @@ function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
         //Nom du tableau sur lequel est la note
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
 
-        oListItem.update(); // /*g_context*/
+        oListItem.update();
         iObeyaConnectedPlatform.clientContext.load(oListItem); // prépartion de la requête, nécessite un appel à executeQueryAsync(...) pour être exécuté
-        console.log("Create RIDA CAML query" + iObeyaNote.id + " errors count :" + error + " date création : " + modifdate+" date modif :"  +modifdate);
+
+        // note : si l'une des note doit mettre à jour des prédécesseurs, il faut mener l'opération en 2 temps ( creation, puis optention des id et mise à jour )       
+        var hasprecedessor = noteHasPredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote);
+        
+        if (hasprecedessor){
+                iObeyaConnectedPlatform.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint
+                iObeyaNote.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint avec cette note pour la 2 ème passe
+            }
+        // TODO : Positionner un flag et créer un array dédié ? pour indiquer qu'il faut faire 2 passes 1/ pour créer, ensuite 2/ pour faire l'update sur le prédecessor    
+
+        console.log("Create RIDA CAML query" + iObeyaNote.id + " errors count :" + error + " date création : " + modifdate + " date modif :" + modifdate);
 
     } catch (e) {
         throw e;
@@ -584,14 +593,14 @@ function onQueryFailed_test(sender, args) {
  * @returns {Boolean}
  */
 
-function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote,ok_text) {
+function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, ok_text) {
     var error = 0;
     try {
         var l_oList = iObeyaConnectedPlatform.oList;
         var oListItem = l_oList.getItemById(ridaId);
 
         // Récupérer les objets qui chevauchent le post-it
-        var iObeyaOverlapping = findOverlappingElements(iObeyaNote,iObeyaConnectedPlatform.iObeyaNodes);
+        var iObeyaOverlapping = findOverlappingElements(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes);
         var iObeyaLabel = getAssociatedLabel(iObeyaOverlapping);
         var iObeyaPercentCompleteSticker = getAssociatedPercentCompleteSticker(iObeyaOverlapping);
         var iObeyaPrioritySticker = getAssociatedPrioritySticker(iObeyaOverlapping);
@@ -601,22 +610,23 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote,o
         error = +getLabelProperties(oListItem, iObeyaLabel);
         error = +getPercentCompleteStickerProperties(oListItem, iObeyaPercentCompleteSticker);
         error = +getPriorityStickerProperties(oListItem, iObeyaPrioritySticker);
+        var hasprecedessor = getNotePredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote); // on ne place pas le prédécesseur car il faut avoir l'id des items en mémoire pour travailler
 
         // Date de modification
-         var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
+        var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
 
         //Mise à jour du tableau
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
-		
-		if (ok_text.length <= 0 ) 
-			ok_text="ok";
-		
-		if (error>0){
-			error=error+'errs';
-			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], error);
-		} else 
-			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], ok_text);
+
+        if (ok_text.length <= 0)
+            ok_text = "ok";
+
+        if (error > 0) {
+            error = error + 'errs';
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], error);
+        } else
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], ok_text);
 
         oListItem.update();
 
@@ -624,20 +634,20 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote,o
     } catch (e) {
         throw e;
     }
-    
+
     return error;
 }
 
 /*** Mise à jour du statut de synchronisation d'une donnée RIDA ***/
 /* Cette fonction prépare une requête CAML sharepoint qui doit ensuite être exécutée via un executeQueryAsync( 
  *  située dans la fonction interfaceSynciObeya.js/performSyncCRUDs
+ 
+ * @param {type} iObeyaConnectedPlatform
+ * @param {type} ridaId
+ * @param {type} status
+ * @returns {Boolean}  */
 
-  * @param {type} iObeyaConnectedPlatform
-  * @param {type} ridaId
-  * @param {type} status
-  * @returns {Boolean}  */
-
-function CAML_updateRidaSyncInfo(iObeyaConnectedPlatform,ridaId,status) {
+function CAML_updateRidaSyncInfo(iObeyaConnectedPlatform, ridaId, status) {
     try {
         var oListItem = iObeyaConnectedPlatform.oList.getItemById(ridaId);
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], status);
@@ -671,15 +681,106 @@ function CAML_DeactivateRidaEntrySynchroFlag(iObeyaConnectedPlatform, ridaId) {
     }
 }
 
-/* Note : nouvelle structure à partir de la version pour iObeya 3.3 */
-/*        
- * note.props= {
- 'content ' : contentLabel, // au milieu
- 'title ' : label0, // en haut
- 'responsible' : label1, // en bas à gauche
- 'date' : label2, // en bas à droit
- 'worload' : workload // non affiché
- };*/
+
+/*
+ * Cette fonction récupère le prédécessor d'une note pour créer une dépendance de tâche dans le sharepoint 
+ * Nécessite d'avoir les it Sharepoint en mémoire
+ * @param {type} nodesRida
+ * @param {type} oListItem
+ * @param {type} iObeyaNote
+ * @returns {Boolean}
+ */
+
+function getNotePredecessor(nodesRida, oListItem, iObeyaNote) {
+    var statusObject;
+    var haspredecessor = false;
+    try {
+        if (iObeyaNote.hasOwnProperty("overlappingNotesChain")) {
+
+            // on loop dans l'array pour trouver le prédécesseur
+            var l_precedessor;
+
+            for (var ii = 0; ii < iObeyaNote.overlappingNotesChain.length; ii++) { // on loop dans l'array
+
+                if (iObeyaNote.overlappingNotesChain[ii].id === iObeyaNote.id) { // on s'arrête de boucler quand on tombe sur le noeud lui-même
+                    if (SHAREPOINTLIST_MATCHINGNAME.hasOwnProperty("predecessors")) {
+                        var predecessor = {};
+                        var predecessor_array = [];
+
+                        if (l_precedessor != null)
+                            if (l_precedessor.hasOwnProperty("id")) {
+                                var predecessorId = getRidaObjectByiObeyaId(nodesRida, l_precedessor.id).idRida;
+                                var newLookupField = new SP.FieldLookupValue();
+                                newLookupField.set_lookupId(predecessorId);
+                                if (predecessorId > 0) // a-t-on trouver le prédecesseur dans la mémoire ?
+                                    oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], newLookupField);
+                                haspredecessor = true;
+                            }
+
+                        return haspredecessor; // on sort (on ne gère qu'un prececesseur )
+                    }
+
+                } else
+                    l_precedessor = iObeyaNote.overlappingNotesChain[ii]; // on boucle
+            }
+        }
+        // pas de precedesseur => on vide la colonne
+        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], null);
+        return haspredecessor;
+
+    } catch (e) {
+        throw e;
+    }
+}
+
+/*
+ * Cette fonction indique si la note passée va positionner un prédécesseur 
+ * Nécessite d'avoir les it Sharepoint en mémoire
+ * @param {type} nodesRida
+ * @param {type} oListItem
+ * @param {type} iObeyaNote
+ * @returns {Boolean}
+ */
+
+function noteHasPredecessor(nodesRida, oListItem, iObeyaNote) {
+    var statusObject;
+    var haspredecessor = false;
+    try {
+        if (iObeyaNote.hasOwnProperty("overlappingNotesChain")) {
+
+            // on loop dans l'array pour trouver le prédécesseur
+            var l_precedessor;
+
+            for (var ii = 0; ii < iObeyaNote.overlappingNotesChain.length; ii++) { // on loop dans l'array
+
+                if (iObeyaNote.overlappingNotesChain[ii].id === iObeyaNote.id) { // on s'arrête de boucler quand on tombe sur le noeud lui-même
+                    if (SHAREPOINTLIST_MATCHINGNAME.hasOwnProperty("predecessors")) {
+                        var predecessor = {};
+                        var predecessor_array = [];
+
+                        if (l_precedessor != null)
+                            if (l_precedessor.hasOwnProperty("id")) {
+                                haspredecessor = true;
+                            }
+
+                        return haspredecessor; // 
+                    }
+
+                } else
+                    l_precedessor = iObeyaNote.overlappingNotesChain[ii]; // on boucle
+            }
+        }
+        // pas de precedesseur => on vide la colonne
+        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], null);
+        return haspredecessor;
+
+    } catch (e) {
+        throw e;
+    }
+}
+
+
+
 
 // cette fonction :
 // - récupère les données d'un object iObeya en mémoire ( et récupéré depuis la plateforme )
@@ -699,55 +800,55 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
     var error = 0;
 
     try { // On traite les données liées à la charge
-		
-		// Echéance ferme (la note est en rouge pour la note, pour la card c'est une propriété intrasèque)
-		
-		if (iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO")  // pour la note seulement
-			if (iObeyaNote.color === NOTE_WARNING_COLOR) {
-				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], true);
-			} else {
-				oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
-			}
-		
-		if (iObeyaNote['@class'] === "com.iobeya.dto.BoardCardDTO"){// pour la card seulement
-			/*var priority=false;
-			
-			iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props)
-				iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props.priority)
-								priority=iObeyaNote.props.priority;
-			
-			oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], priority);*/
-			
-			if (iObeyaNote.checklist instanceof Array ){
-				// on tri l'arraus
-				var sortcheck=[];
-				for(var key in iObeyaNote.checklist)
-					if(iObeyaNote.checklist.hasOwnProperty(key))
-						sortcheck.push(iObeyaNote.checklist[key]);
 
-				sortcheck.sort(function(a, b) {
-						 return a.index-b.index; // compare numbers
-						 });
+        // Echéance ferme (la note est en rouge pour la note, pour la card c'est une propriété intrasèque)
 
-				var details_text="<div>\n";
+        if (iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO")  // pour la note seulement
+            if (iObeyaNote.color === NOTE_WARNING_COLOR) {
+                oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], true);
+            } else {
+                oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], false);
+            }
 
-				if( SHAREPOINTLIST_MATCHINGNAME["details"] ){// seulement si la valeur 'details' est déclarée
-						 for (var iii in sortcheck){ // on itère sur l'array
-							 var chk_lst = sortcheck[iii];
-							 if(chk_lst.status){
-								details_text+='<span style="text-decoration&#58;line-through;">'; //
-								details_text+=chk_lst.label; 
-								details_text+='</span>';
-							 } else
-								details_text+=chk_lst.label;
-							 details_text+="<br>\n";
-						 } // for (var iii in sortcheck){
-					details_text+="</div>";
-					oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["details"], details_text);
-					} //if( SHAREPOINTLIST_MATCHINGNAME["details"] )
-			}  //if (iObeyaNote.checklist instanceof Array )
-		}
-        error = mapIObeyaToRida(oListItem,iObeyaNote); // affectation dynamique des champs.
+        if (iObeyaNote['@class'] === "com.iobeya.dto.BoardCardDTO") {// pour la card seulement
+            /*var priority=false;
+             
+             iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props)
+             iObeyaNote.checklist.hasOwnProperty(iObeyaNote.props.priority)
+             priority=iObeyaNote.props.priority;
+             
+             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["firmDeadline"], priority);*/
+
+            if (iObeyaNote.checklist instanceof Array) {
+                // on tri l'arraus
+                var sortcheck = [];
+                for (var key in iObeyaNote.checklist)
+                    if (iObeyaNote.checklist.hasOwnProperty(key))
+                        sortcheck.push(iObeyaNote.checklist[key]);
+
+                sortcheck.sort(function (a, b) {
+                    return a.index - b.index; // compare numbers
+                });
+
+                var details_text = "<div>\n";
+
+                if (SHAREPOINTLIST_MATCHINGNAME["details"]) {// seulement si la valeur 'details' est déclarée
+                    for (var iii in sortcheck) { // on itère sur l'array
+                        var chk_lst = sortcheck[iii];
+                        if (chk_lst.status) {
+                            details_text += '<span style="text-decoration&#58;line-through;">'; //
+                            details_text += chk_lst.label;
+                            details_text += '</span>';
+                        } else
+                            details_text += chk_lst.label;
+                        details_text += "<br>\n";
+                    } // for (var iii in sortcheck){
+                    details_text += "</div>";
+                    oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["details"], details_text);
+                } //if( SHAREPOINTLIST_MATCHINGNAME["details"] )
+            }  //if (iObeyaNote.checklist instanceof Array )
+        }
+        error = mapIObeyaToRida(oListItem, iObeyaNote); // affectation dynamique des champs.
 
         if (error) { // il y a eu un pb d'interpretation
             // on ajoute /!\ au début de la note pour attirer l'attention
@@ -757,7 +858,7 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
 
         statusObject = findNoteStatus(iObeyaNote, iObeyaNodes); // Statut
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["status"], statusObject.status);
-		
+
         // ID iObeya
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["idiObeya"], iObeyaNote.id);
         // Synchronisé avec iObeya : Oui
@@ -775,16 +876,16 @@ function getNoteProperties(oListItem, iObeyaNote, iObeyaNodes) {
  * @param iObeyaNote Object I/O Partie de l'objet iObeya, mis à jour dans la fonction
  * @param oListItem Object I/O Objet Sharepoint, mis à jour dans la fonction
  */
-function mapIObeyaToRida(oListItem,iObeyaNote) {
+function mapIObeyaToRida(oListItem, iObeyaNote) {
     var error = 0;
 
     for (var key in IOBEYANOTE_MAPPING) {
         var mappingItem = IOBEYANOTE_MAPPING[key];
 
-			// on ne garde que les propriétés liés à l'object iObeya en cours
-		if (mappingItem.class !==  iObeyaNote['@class']) 
-			continue;
-		
+        // on ne garde que les propriétés liés à l'object iObeya en cours
+        if (mappingItem.class !== iObeyaNote['@class'])
+            continue;
+
         // Vérification de la présence des champs nécessaires
         if (!mappingItem.hasOwnProperty('type')) {
             //throw new InterfaceException("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ \'type\'");
@@ -798,7 +899,7 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
         }
 
 
-		
+
         // Initialisation à partir du template iObeya
         // {'title': 'titre dans iobeya'}
         var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
@@ -810,7 +911,7 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
         // Si on doit mettre à jour l'objet iObeya (ex. en cas d'erreur)
         var updateIObeya = false;
 
-        if (data != null ) {
+        if (data != null) {
             // En fonction du type de traitement voulu pour le champ de la note
             switch (type) {
                 // Mapping simple, 1 -> 1
@@ -867,21 +968,21 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
                     if (mappingItem.hasOwnProperty('unit'))
                         unit = mappingItem.unit;
 
-					if (data.length>0){
-						var numbers = filterNumbers(data);
-							if (numbers !== null) { // OK, car data initalisé à '' et filterNumbers('') = null
-								// on place la valeur dans le RIDA
-								oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], numbers);
-								// on met à jour l'objet iObeya en mémoire avec le texte au bout
-								data = numbers + unit;
-							} else {
-								// Choisir : log | changement de val. iObeya | alert
-								data = "/!\\ " + data; // Ajout de /!\ au champ pour alerter de l'erreur
-								error++;
-							}
-						updateIObeya = true;
-						}
-                    
+                    if (data.length > 0) {
+                        var numbers = filterNumbers(data);
+                        if (numbers !== null) { // OK, car data initalisé à '' et filterNumbers('') = null
+                            // on place la valeur dans le RIDA
+                            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], numbers);
+                            // on met à jour l'objet iObeya en mémoire avec le texte au bout
+                            data = numbers + unit;
+                        } else {
+                            // Choisir : log | changement de val. iObeya | alert
+                            data = "/!\\ " + data; // Ajout de /!\ au champ pour alerter de l'erreur
+                            error++;
+                        }
+                        updateIObeya = true;
+                    }
+
                     break;
 
                 case 'date':
@@ -897,20 +998,20 @@ function mapIObeyaToRida(oListItem,iObeyaNote) {
                     // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
                     updateIObeya = true;
                     break;
-					
-				// pour la card, il faut pouvoir passer la date en format unix directement	
-				case "datepassthrough": 
-					if (!isNaN(data) )
-                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data)) ;				
+
+                    // pour la card, il faut pouvoir passer la date en format unix directement	
+                case "datepassthrough":
+                    if (!isNaN(data))
+                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data));
                     break;
-				case "boolean": 
-						if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1"  ) {
-                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], true);
-						} else {
-                        	oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], false);						
-						}
-					updateIObeya = true;
-                    break;	
+                case "boolean":
+                    if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1") {
+                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], true);
+                    } else {
+                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], false);
+                    }
+                    updateIObeya = true;
+                    break;
 
                 default:
                     break;
@@ -956,9 +1057,9 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
     for (var key in IOBEYANOTE_MAPPING) {
         var mappingItem = IOBEYANOTE_MAPPING[key];
 
-		if (mappingItem.class !==  iObeyaNote['@class']) 
-			continue;
-		
+        if (mappingItem.class !== iObeyaNote['@class'])
+            continue;
+
         // Vérification de la présence des champs nécessaires
         if (!mappingItem.hasOwnProperty('type')) {
             //throw new InterfaceException("L'objet '"+key+"' de transformation de iObeya vers RIDA ne possède pas de champ \'type\'");
@@ -975,9 +1076,9 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
         // {'title': 'titre dans iobeya'}
         var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
         var data = iObeyaPartPtr[key];
-		// on ne garde que les propriétés liés à l'object iObeya en cours
+        // on ne garde que les propriétés liés à l'object iObeya en cours
 
-		
+
         var type = mappingItem.type;
         var rida_field = mappingItem.rida_field;
 
@@ -1067,7 +1168,7 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
                     // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
                     break;
 
-				 case 'datepassthrough': // pour la card on passe la valeur numérique	
+                case 'datepassthrough': // pour la card on passe la valeur numérique	
                     if (data) {
                         RidaObject[rida_field] = data;
                     } else {
@@ -1075,16 +1176,16 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
                     }
                     // On met à jour dans tous les cas, pour homogénéiser la façon dont est stockée la date
                     break;
-					
-				case "boolean": 
-					if (data)
-						if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1"  ) {
-                        	RidaObject[rida_field] = true;
-						} else {
-                        	RidaObject[rida_field] = false;					
-						}
-                    break;						
-					
+
+                case "boolean":
+                    if (data)
+                        if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1") {
+                            RidaObject[rida_field] = true;
+                        } else {
+                            RidaObject[rida_field] = false;
+                        }
+                    break;
+
                 default:
                     break;
             }
@@ -1096,19 +1197,19 @@ function mapIObeyaToRidaObject(iObeyaNote, iObeyaNodes) {
     // on récupère les autres informations sur la note 
     var statusObject = findNoteStatus(iObeyaNote, iObeyaNodes); // Statut
     RidaObject.status = statusObject.status;
-   
-	if(iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO" ){ // si note
-		if (iObeyaNote.color === NOTE_WARNING_COLOR)         // Echéance ferme (la note est en rouge)
-			RidaObject.firmDeadline= true;
-		else
-			RidaObject.firmDeadline= false;
-		}
-	
-	RidaObject.idiObeya = iObeyaNote.id;
+
+    if (iObeyaNote['@class'] === "com.iobeya.dto.BoardNoteDTO") { // si note
+        if (iObeyaNote.color === NOTE_WARNING_COLOR)         // Echéance ferme (la note est en rouge)
+            RidaObject.firmDeadline = true;
+        else
+            RidaObject.firmDeadline = false;
+    }
+
+    RidaObject.idiObeya = iObeyaNote.id;
     RidaObject.datecreation = parseInt(iObeyaNote.creationDate);
     RidaObject.modificationDate = parseInt(getNoteLastModificationDate(iObeyaNote, iObeyaNodes));
-    RidaObject.synchroStatus= synchro_status_done;
-    RidaObject.PanneauiObeya= iObeyaNote.boardname;
+    RidaObject.synchroStatus = synchro_status_done;
+    RidaObject.PanneauiObeya = iObeyaNote.boardname;
     RidaObject.error = error;
     RidaObject.reupdateIObeya = updateIObeya;
 
