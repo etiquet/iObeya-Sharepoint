@@ -90,8 +90,10 @@ function getAssociatedEscallationSticker(overlappingElements) {
 }
 
 /*** Retourne la date de dernière modification d'un post-it et des éléments qui le chevauchent ***/
+
 function getNoteLastModificationDate(iObeyaObject, iObeyaNodes) {
-    var lastDate = null, iObeyaOverlapping;
+    var lastDate = null, iObeyaOverlapping, upernotes_note;
+    var upernotes = iObeyaObject.overlappingNotesChain; // la liste des notes/cards chainées
 
     // Post-it
     if (iObeyaObject.creationDate !== null) {
@@ -101,7 +103,7 @@ function getNoteLastModificationDate(iObeyaObject, iObeyaNodes) {
         lastDate = Math.max(lastDate, iObeyaObject.modificationDate);
     }
 
-    // Eléments superposés
+    // Eléments superposés stickers / labels (actors)
     iObeyaOverlapping = findOverlappingElements(iObeyaObject, iObeyaNodes);
 
     if (iObeyaOverlapping)
@@ -113,9 +115,37 @@ function getNoteLastModificationDate(iObeyaObject, iObeyaNodes) {
                 lastDate = Math.max(lastDate, iObeyaOverlapping[i].modificationDate);
             }
         }
+
+    // Eléments superposés notes/card ( on parse toute la liste, comme cela toutes les notes liées se voient comme la même date )
+    // on tient compte des éléments superposés.
+    
+    if (upernotes)
+        for (var ii in upernotes) {
+            upernotes_note = getiObeyaObjectById(iObeyaNodes, upernotes[ii].id);
+
+            if (upernotes_note.creationDate !== null) {
+                lastDate = Math.max(lastDate, upernotes_note.creationDate);
+            }
+            if (upernotes_note.modificationDate !== null) {
+                lastDate = Math.max(lastDate, upernotes_note.modificationDate);
+            }
+
+            // On regarde sur les éléments superposés stickers / labels (actors)
+            iObeyaOverlapping = findOverlappingElements(upernotes_note, iObeyaNodes);
+
+            if (iObeyaOverlapping)
+                for (var i in iObeyaOverlapping) {
+                    if (iObeyaOverlapping[i].creationDate !== null) {
+                        lastDate = Math.max(lastDate, iObeyaOverlapping[i].creationDate);
+                    }
+                    if (iObeyaOverlapping[i].modificationDate !== null) {
+                        lastDate = Math.max(lastDate, iObeyaOverlapping[i].modificationDate);
+                    }
+                }
+        }
+
     return lastDate;
 }
-
 
 /**
  * Traitement des informations particulières du post-it
@@ -150,7 +180,7 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
 
         // Délimitation de la zone
         var limit = getZoneLimit(rollObject);
-		
+
         // Point de départ
         var X = rollObject.x + NOTE_DEFAULT_MARGIN; // Marge à gauche
         var Y = rollObject.y + NOTE_DEFAULT_MARGIN + limit.YOffset; // Marge au-dessus
@@ -196,7 +226,7 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
         }
 
         // Plus de place sur le rouleau
-		// TODO: traiter différemment le cas d.erreur pour ne pas bloquer la synchro
+        // TODO: traiter différemment le cas d.erreur pour ne pas bloquer la synchro
 
         if (Y + realHeight >= limit.Y) {
             alert(`Il n'y a plus de place disponible pour afficher un élément au statut "${element.status}" du panneau "${rollObject.boardname}".`);
@@ -231,34 +261,34 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
 /*** Détermine l'emplacement où doit se trouver l'étiquette "Responsable" à la création ***/
 
 function placeLabel(label, note) {
-    label.x = note.x + note.width - label.width ; // à droite
-	label.y = note.y ; // par défaut en haut
-	
-	if (note['@class'] === "com.iobeya.dto.BoardNoteDTO"){// modifié
-		label.y = note.y + LABEL_POSITION_MARGIN_TOP ;		// si c'est une note l'acteur est positionné sur le bas
-		}
-	
-	if (note['@class'] === "com.iobeya.dto.BoardCardDTO"){// modifié
-		label.y = note.y + note.height + LABEL_POSITION_MARGIN_TOP -label.height ;		// si c'est une card l'acteur est positionné sur le bas
-		}
-	
+    label.x = note.x + note.width - label.width; // à droite
+    label.y = note.y; // par défaut en haut
+
+    if (note['@class'] === "com.iobeya.dto.BoardNoteDTO") {// modifié
+        label.y = note.y + LABEL_POSITION_MARGIN_TOP;		// si c'est une note l'acteur est positionné sur le bas
+    }
+
+    if (note['@class'] === "com.iobeya.dto.BoardCardDTO") {// modifié
+        label.y = note.y + note.height + LABEL_POSITION_MARGIN_TOP - label.height;		// si c'est une card l'acteur est positionné sur le bas
+    }
+
     label.zOrder = note.zOrder + 1;
     return label;
 }
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "% achevé" à la création ***/
 function placePercentCompleteSticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width/4;
-    sticker.y = note.y + note.height/2 - sticker.height;
+    sticker.x = note.x + note.width - sticker.width / 4;
+    sticker.y = note.y + note.height / 2 - sticker.height;
     sticker.zOrder = note.zOrder + 2;
     return sticker;
 }
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "Priority" à la création ***/
 function placePrioritySticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width/4;
-    sticker.y = note.y + note.height/2 ;
-	sticker.zOrder = note.zOrder + 3;
+    sticker.x = note.x + note.width - sticker.width / 4;
+    sticker.y = note.y + note.height / 2;
+    sticker.zOrder = note.zOrder + 3;
     return sticker;
 }
 
@@ -326,7 +356,7 @@ function findNoteStatus(iObeyaNote, iObeyaNodes) {
             // On vérifie si la note est une note clonnée (donc pas encore positionné sur un roll)
 
             // On regarde si le centre du post-it appartient à la zone
-            var chk1 = isPointInRectangle(iObeyaNote.x + iObeyaNote.width / 2,iObeyaNote.y + iObeyaNote.height / 2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x + iObeyaObject.width, iObeyaObject.y + iObeyaObject.height);
+            var chk1 = isPointInRectangle(iObeyaNote.x + iObeyaNote.width / 2, iObeyaNote.y + iObeyaNote.height / 2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x + iObeyaObject.width, iObeyaObject.y + iObeyaObject.height);
             if (chk1) {
                 result.rollObject = iObeyaObject;
 
@@ -338,7 +368,7 @@ function findNoteStatus(iObeyaNote, iObeyaNodes) {
                         var chk2 = isPointInRectangle(iObeyaObject2.x + iObeyaObject2.width / 2, iObeyaObject2.y + iObeyaObject2.height / 2, iObeyaObject.x, iObeyaObject.y, iObeyaObject.x + iObeyaObject.width, iObeyaObject.y + iObeyaObject.height);
                         if (chk2) {
                             result.status = iObeyaObject2.contentLabel;
-                            iObeyaObject.status=iObeyaObject2.contentLabel; // pour le deboggage
+                            iObeyaObject.status = iObeyaObject2.contentLabel; // pour le deboggage
                             break;
                         }
                     }

@@ -364,11 +364,8 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
 
             }// for (var i = 0; i < data.length
 
-
-
-
             // Maintenant que le panneau est chargé entièrement, on fait une passe pour déterminer la hierarchie / lien s'il y a des cards/ superposés
-            // L'algorythme recherche l'ensemble des notes superposée et qui s'enchaine.
+            // L'algorithme recherche l'ensemble des notes superposée et qui s'enchaine.
             // Cette liste est partagée avec l'ensemble des notes qui se suivent
 
             if (iObeyaConnectedPlatform.iObeyaNodes.length - startlength > 0) {  // des nodes ont été ajoutées dans ce passage ?

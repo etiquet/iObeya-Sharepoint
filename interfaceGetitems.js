@@ -98,6 +98,8 @@ function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConne
                 l_ridaobj[key] = formateFieldToExport(fields[SHAREPOINTLIST_MATCHINGNAME[key]]);
             }
 
+            console.log( "Get rida item, titre : " + l_ridaobj.subject + " crea date:" + l_ridaobj.creationDate.toString() +" /" +new Date(l_ridaobj.creationDate)+" modif date:" + l_ridaobj.modificationDate.toString() +" /" +new Date(l_ridaobj.modificationDate) );
+
             // Note : Si la donnée panneau est vide on force la valeur par défaut
             // et si le panneau précisé est en dehors des noms connu => valeur par défaut également
 

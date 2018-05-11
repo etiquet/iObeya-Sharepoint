@@ -865,12 +865,12 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
             } else {
 
 
-                // le noeud iObeya existe. On compare maintenant les date de modif.
-                // attention dans iObeya il faut regarder l'ensemble des elements note + objets superposés.
+                // Le noeud iObeya existe. On compare maintenant les date de modif.
+                // Attention dans iObeya il faut regarder l'ensemble des elements note + objets superposés.
+                // TODO : il faut tenir compte s'il y a des notes cascadées/liées.
                 // on convertit en nombre
 
-                var noteModificationDate = parseInt(getNoteLastModificationDate(iObeyaObject, iObeyaNodes));
-
+                var noteModificationDate = getNoteLastModificationDate(iObeyaObject, iObeyaNodes);
 
                 // Bloc de code commenté car il suffit de boucler sur l'une des liste (dans ce cas, celle d'iObeya) pour que l'autre se mette à jour (après synchronisation).
                 // On commence par regarder  s'il faut réajuster la dueDate du coté RIDA ?
@@ -920,7 +920,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                                 if (iObeyaDueDatePropertyval < Math.round(new Date().getTime())) { // on compare les date
                                     console.log("Duedate :  < date du jour ( RIDA) ");
 
-                                    if (noteModificationDate > parseInt(ridaObject.modificationDate)) { // seulement si normalement l'iObeya devait être mis à jour    
+                                    if (noteModificationDate > (ridaObject.modificationDate)) { // seulement si normalement l'iObeya devait être mis à jour    
                                         iObeyaDueDatePropertyval = Math.round(new Date().getTime()); // on met à jour la date
                                         console.log("Duedate : réajustée automatiquement à la date du jour (node iObeya)");
                                         duedateupdated = true;
@@ -946,16 +946,14 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                 // important :  faut tenir compte d'une TOLERANCEINTERVAL, car la synchronisation des serveurs peut ne pas être parfaite + latence internet.
 
                 // code pour déboggage sur les dates.
-                console.log(" comparaison de date rida modif date : " + parseInt(ridaObject.modificationDate).toString() + " note+global overlay object iobeya date:" + (noteModificationDate).toString() + " diff Abs : " + Math.abs(parseInt(ridaObject.modificationDate) - noteModificationDate).toString() + " intervalle :" + TOLERANCEINTERVAL);
-
+                console.log(" comparaison de date rida, titre : " + ridaObject.subject + " Rida date" + (ridaObject.modificationDate).toString() + " iObeya note+overlay obj date:" + (noteModificationDate).toString() + " diff Abs : " + ((ridaObject.modificationDate) - noteModificationDate).toString() + "Intervalle de tolérance:" + TOLERANCEINTERVAL);
 
                 if (ridaObject.synchroiObeya && ridaObject.status != DELETED_STATUS
                         && (!ridaObject.modificationDate || !noteModificationDate ||
-                                (Math.abs(parseInt(ridaObject.modificationDate) - noteModificationDate) > TOLERANCEINTERVAL))
-                        ) {
+                                (Math.abs(ridaObject.modificationDate) - noteModificationDate) > TOLERANCEINTERVAL)){
 
-                    if (parseInt(ridaObject.modificationDate) > noteModificationDate) {
-                        console.log("ridaObject.modificationDate > noteModificationDate :" + (parseInt(ridaObject.modificationDate) > noteModificationDate));
+                    if ((ridaObject.modificationDate) > noteModificationDate) {
+                        console.log("ridaObject.modificationDate > noteModificationDate :" + ((ridaObject.modificationDate) > noteModificationDate));
                         // Rida plus récent > Cas n°3 : mise à jour iObeya
                         l_synclist = addSyncObject(l_synclist, syncType.todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
                         l_synclist[l_synclist.length - 1].duedateupdated = duedateupdated;

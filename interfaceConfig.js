@@ -59,7 +59,7 @@ var SYNC_PROPERTIES_MAP = {
         'ACTORSSET_ID': '62bc99d5-39ae-4cae-9d6d-4e5c00c2ae30', // "ActeurTerme" TERMSET
         'ACTORSSUBSET_ID': ["157a0c3f-2085-4f56-b224-85771c3c3af1", "44259241-48cc-407c-92fb-803ee33c6d16", "d19c768a-5e41-44f7-8ed7-d05216f62770", "0cc10e7e-117c-4a43-a9fe-7b5d78c89979"], // Important : doit être dans le même ordre que la liste des panneaux à synchroniser...
         'USE_ACTORSSUBSETLIST': 'false', // utilisation ou pas des sous-listes de la taxonomie des acteurs. ( si false le terme : ACTORSSET_ID est utilisé )
-        'IOBEYAURL': 'https://35.204.44.80', //ptf @cap en 3.4
+        'IOBEYAURL': 'https://dev01.bt2cloud.com', //ptf @cap en 3.4
         'ROOM_NAME': 'PROJETS-TEST', //ptf @cap en 3.4
         'BOARDSTOSYNC': [// Tableaux de iObeya utilisés
             'SuiviCoproj',
@@ -140,25 +140,25 @@ var SYNC_PROPERTIES_MAP = {
             "setName": "Escallation",
             "map": {
                 "Orange": {
-                    "target_url": "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_url": "https://dev01.bt2cloud.com", //ptf @cap en 3.6.6
                     "target_room": "PROJETS-TEST",
                     "target_board": "SuiviCoproj",
                     "target_dropZone": "Point d'attention"
                 },
                 "Blue": {
-                    "target_url": "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_url": "https://dev01.bt2cloud.com", //ptf @cap en 3.6.6
                     "target_room": "PROJETS-TEST",
                     "target_board": "SuiviBSU",
                     "target_dropZone": "Point d'attention"
                 },
                 "Green": {
-                    "target_url": "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_url": "https://dev01.bt2cloud.com", //ptf @cap en 3.6.6
                     "target_room": "PROJETS-TEST",
                     "target_board": "SuiviBOE",
                     "target_dropZone": "Point d'attention"
                 },
                 "Red": {
-                    "target_url": "https://10.211.55.36", //ptf @cap en 3.6.6
+                    "target_url": "https://dev01.bt2cloud.com", //ptf @cap en 3.6.6
                     "target_room": "PROJETS-TEST",
                     "target_board": "Developpement - Interne",
                     "target_dropZone": "Point d'attention"
