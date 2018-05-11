@@ -538,7 +538,7 @@ function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
         var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
 
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], modifdate);
-        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate); 
+        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
 
         // Synchronisé avec iObeya : Oui
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], synchro_status_done);
@@ -550,11 +550,11 @@ function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
 
         // note : si l'une des note doit mettre à jour des prédécesseurs, il faut mener l'opération en 2 temps ( creation, puis optention des id et mise à jour )       
         var hasprecedessor = noteHasPredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote);
-        
-        if (hasprecedessor){
-                iObeyaConnectedPlatform.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint
-                iObeyaNote.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint avec cette note pour la 2 ème passe
-            }
+
+        if (hasprecedessor) {
+            iObeyaConnectedPlatform.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint
+            iObeyaNote.sharepointToReupdate = true; // indique qu'il faudra faire une mise à jour de sharepoint avec cette note pour la 2 ème passe
+        }
         // TODO : Positionner un flag et créer un array dédié ? pour indiquer qu'il faut faire 2 passes 1/ pour créer, ensuite 2/ pour faire l'update sur le prédecessor    
 
         console.log("Create RIDA CAML query" + iObeyaNote.id + " errors count :" + error + " date création : " + modifdate + " date modif :" + modifdate);
@@ -593,7 +593,7 @@ function onQueryFailed_test(sender, args) {
 
 function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, ok_text) {
     var error = 0;
-    
+
     try {
         var l_oList = iObeyaConnectedPlatform.oList;
         var oListItem = l_oList.getItemById(ridaId);
@@ -612,11 +612,11 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
         var hasprecedessor = getNotePredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote); // on ne place pas le prédécesseur car il faut avoir l'id des items en mémoire pour travailler
 
         // Date de modification
-        var modifdate =getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes);
-        var modifdate_str =  new Date(modifdate);
+        var modifdate = getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes);
+        var modifdate_str = new Date(modifdate);
 
-       oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate_str);
-        
+        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate_str);
+
         //Mise à jour du tableau
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
 
@@ -631,8 +631,8 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
 
         oListItem.update();
 
-        console.log("Create CAML query : Update RIDA sur l'id iObeya :" + iObeyaNote.id +" /"+ iObeyaNote.props.content + " Errors count :" + error + " Modif date :" + modifdate +" /"+modifdate_str );
-        
+        console.log("Create CAML query : Update RIDA sur l'id iObeya :" + iObeyaNote.id + " /" + iObeyaNote.props.content + " Errors count :" + error + " Modif date :" + modifdate + " /" + modifdate_str);
+
     } catch (e) {
         throw e;
     }
@@ -1003,9 +1003,11 @@ function mapIObeyaToRida(oListItem, iObeyaNote) {
 
                     // pour la card, il faut pouvoir passer la date en format unix directement	
                 case "datepassthrough":
-                    if (!isNaN(data))
-                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data));
+                    if (! isNaN(data) )
+                        if (data > 0)
+                            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data));
                     break;
+
                 case "boolean":
                     if (data == true || data == "TRUE" || data == "true" || data == 1 || data == "1") {
                         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], true);
@@ -1020,6 +1022,7 @@ function mapIObeyaToRida(oListItem, iObeyaNote) {
             }
         } else {
             var debug = true; // TODO: pour déboggage & vérification
+            oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], null); // pour propager un champs vide
         }
         // TODO - TEST - FIX : pb d'import
         /*if (rida_field instanceof Array) {
@@ -1243,13 +1246,13 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
                 }
 
                 // (ancienne)option avec l'utilisation de la taxonomie, il faut traiter l'object taxonomie sharepoint
-                if(SP.Taxonomy)
-                if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term) {
-                    if (g_actorsTermsList[i].get_name().toLocaleLowerCase() == iObeyaLabel.contentLabel.toLocaleLowerCase()) {
-                        actorTermId = g_actorsTermsList[i].get_id().toString(); // l'id du terme dans la taxonomie de sharepoint
-                        found = true;
+                if (SP.Taxonomy)
+                    if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term) {
+                        if (g_actorsTermsList[i].get_name().toLocaleLowerCase() == iObeyaLabel.contentLabel.toLocaleLowerCase()) {
+                            actorTermId = g_actorsTermsList[i].get_id().toString(); // l'id du terme dans la taxonomie de sharepoint
+                            found = true;
+                        }
                     }
-                }
                 // nouvelle option avec l'utilisation d'une liste sharepoint (l'acteur est une colonne)
                 if ((g_actorsTermsList[i] instanceof Object)) { // TODO FIX of error of content type
 
@@ -1280,9 +1283,9 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
                 return ridaItem; // on s'arrête là
             } else {
                 // si c'est un acteur issu de la taxonomie, il faut donner l'index du terms
-                                if(SP.Taxonomy)
-                if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term)
-                    ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["actor"], actorTermId);
+                if (SP.Taxonomy)
+                    if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term)
+                        ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["actor"], actorTermId);
 
                 // si c'est un acteur issu d'une liste, on renvoie juste le texte
                 if (g_actorsTermsList[i] instanceof Object)

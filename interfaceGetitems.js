@@ -60,6 +60,11 @@ function formateFieldToExport(field) {
                 return field.get_label();
             }
 
+        if (field instanceof SP.FieldUserValue) { // ex Champs simple acteur taxonomie
+            return field.get_lookupValue();
+        }
+
+
         var debug = true; // pour faire un beakpoint
         return field; // par defaut on transmet la valeur (on garde le type d'objet fourni)
 
@@ -78,10 +83,10 @@ function formateFieldToExport(field) {
 
 function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConnectedPlatform) {
     var fields, l_ridaobj, listItemEnumerator, key;
-   
+
     l_ridaNodes = [];
     iObeyaConnectedPlatform.ridaNodes = []; // on vide s'il y avait une liste précédemment
-    
+
     try {
         console.log("Retrieve RIDA items");
         console.log(collListItem);
@@ -92,13 +97,13 @@ function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConne
             fields = listItemEnumerator.get_current().get_fieldValues();
             l_ridaobj = new Object();
             l_ridaobj.idRida = fields.ID;
-            
+
             // On boucle sur les champs attendus (cf configuration) et on converti les objets sharepoint en quelques choses d'utilisation
             for (key in SHAREPOINTLIST_MATCHINGNAME) { // SHAREPOINTLIST_MATCHINGNAME defined in interfaceConfig.js
                 l_ridaobj[key] = formateFieldToExport(fields[SHAREPOINTLIST_MATCHINGNAME[key]]);
             }
 
-            console.log( "Get rida item, titre : " + l_ridaobj.subject + " crea date:" + l_ridaobj.creationDate.toString() +" /" +new Date(l_ridaobj.creationDate)+" modif date:" + l_ridaobj.modificationDate.toString() +" /" +new Date(l_ridaobj.modificationDate) );
+            console.log("Get rida item, titre : " + l_ridaobj.subject + " crea date:" + l_ridaobj.creationDate.toString() + " /" + new Date(l_ridaobj.creationDate) + " modif date:" + l_ridaobj.modificationDate.toString() + " /" + new Date(l_ridaobj.modificationDate));
 
             // Note : Si la donnée panneau est vide on force la valeur par défaut
             // et si le panneau précisé est en dehors des noms connu => valeur par défaut également
