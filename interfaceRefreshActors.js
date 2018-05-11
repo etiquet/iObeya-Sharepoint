@@ -97,7 +97,7 @@ function retrieveActorsList_refresh(panneau) { // Initialisation de l'array mult
         initiateiObeyaPlateformeMainStruct(syncID); // utilise la structure g_iObeyaPlatforms
         // on place le  callsback.
 
-        g_iObeyaPlatforms[IOBEYAURL].postloginMethods = function () {
+        g_iObeyaPlatforms[IOBEYAURL].succesMethods = function () {
             syncActors_refresh(g_iObeyaPlatforms[IOBEYAURL], panneau);
         };   // la methode appellée pour gérer la synchronisation des labels d'acteurs.
 
@@ -352,7 +352,7 @@ function waitUnitCommitDone4closingWindows(iObeyaConnectedPlatform) {
     var timerId = window.setInterval(function () {
         console.log("timer : " + g_countl++);
 
-        if (iObeyaConnectedPlatform.requestQueue.length =m= 0) {
+        if (iObeyaConnectedPlatform.requestQueue.length = m = 0) {
             // Tous les process iObeya ont été lancés, et tous sont terminés
             console.log("Commits iObeya are done : closing windows");
             clearInterval(timerId);

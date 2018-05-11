@@ -531,17 +531,15 @@ function createCAMLCreateRidaEntry(iObeyaConnectedPlatform, iObeyaNote) {
         error = +getPercentCompleteStickerProperties(oListItem, iObeyaPercentCompleteSticker);
         error = +getPriorityStickerProperties(oListItem, iObeyaPrioritySticker);
 
-        // Date de création
-        // note: SHAREPOINTLIST_MATCHINGNAME est un array de translation entre le nom de la variable interne et la colonne de la liste SP.
-        // voir fichier de conf.
+        // Date de création / modification
         //TODO: test on place la même date dans les 2 champs
 
         var newdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
         var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
 
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], modifdate);
-        // On modifie la date de modification car sinon les notes vont être resynchronisées dans l'autre sens
-        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
+        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate); 
+
         // Synchronisé avec iObeya : Oui
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["synchroStatus"], synchro_status_done);
         //Nom du tableau sur lequel est la note
@@ -614,8 +612,11 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
 
         // Date de modification
         var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
-        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
-
+       oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
+       
+// oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], "3/3/2223");
+        //oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], "2/2/2222");
+        
         //Mise à jour du tableau
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
 
@@ -1241,6 +1242,7 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
                 }
 
                 // (ancienne)option avec l'utilisation de la taxonomie, il faut traiter l'object taxonomie sharepoint
+                if(SP.Taxonomy)
                 if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term) {
                     if (g_actorsTermsList[i].get_name().toLocaleLowerCase() == iObeyaLabel.contentLabel.toLocaleLowerCase()) {
                         actorTermId = g_actorsTermsList[i].get_id().toString(); // l'id du terme dans la taxonomie de sharepoint
@@ -1277,6 +1279,7 @@ function getLabelProperties(ridaItem, iObeyaLabel) {
                 return ridaItem; // on s'arrête là
             } else {
                 // si c'est un acteur issu de la taxonomie, il faut donner l'index du terms
+                                if(SP.Taxonomy)
                 if (g_actorsTermsList[i] instanceof SP.Taxonomy.Term)
                     ridaItem.set_item(SHAREPOINTLIST_MATCHINGNAME["actor"], actorTermId);
 

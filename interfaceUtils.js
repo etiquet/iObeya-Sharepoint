@@ -1,27 +1,27 @@
 /***
-
+ 
  Authentification sur la plateforme IObeya
  Cette fonction est appelé par d'autres méthode qui précise la fonction appellée en call back.
  Dans le déroulement nominal du script, le call back est la fonction qui qui gère la synchro : function syncNotes(iObeyaConnectedPlatform){
-
+ 
  NOTE :  IMPORTANT IMPORTANT IMPORTANT cette portion de code fait largement appel à CORS
  cf. https://en.wikipedia.org/wiki/Cross-origin_resource_sharing
-
+ 
  "definition wikipedia :" Cross-origin resource sharing (CORS) is a mechanism that allows restricted resources (e.g. fonts) on a web page to be requested from another domain outside the domain from which the first resource was served.[1]"
-
+ 
  Cela nécessite que le serveur iObeya soit correctement configuré
  ( ce n'est pas activé par défaut il faut paramétrer le CORS dans l'interface d'admin d'iObeya, fct dispo depuis la v3.4)
-
+ 
  Le tricks... CORS (le navigateur) execute également un pre-fetch (rerequete) si la requete n'est pas vue comme standard ( post / put / content type non standard )
  le comportement des navigateurs est différent selon les versions pour le prefetch, parfois les credentials (cookies) ne sont pas envoyés.
  L'erreur est donc un rejet par la plateforme iObeya.
  Deplus : Les implémentations diffèrent selon la version du navigateurs, vérifier que la version du navigateur est récente.
  ( typiquement eviter la v45 de FireFox )
-
+ 
  Attention donc à cet aspect.
-
+ 
  TODO : modifier les fonctions d'appels à la plateforme pour permettre un call XHTML via le navigateur ou jsnode (google)
-
+ 
  ***/
 
 
@@ -34,17 +34,17 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
         throw new InterfaceException("iObeyaPlatformLoginAndGetItems :: Pas de paramètre de plateforme passée ou erreur");
     }
 
-    var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods; // on récupère la fonction callback si failed
+    var failedMethods = iObeyaConnectedPlatform.failedMethods; // on récupère la fonction callback si failed
 
     // On vérifie s'il y a deja une connexion active
     // si c'est déja connecté on ne fait qu'appeler la fonction de complétion
 
     if (iObeyaConnectedPlatform.connected === true) {
-        callCallbackFunctions(iObeyaConnectedPlatform.postloginMethods); //si loggué on appelle la/les fonctions de post-sync immédiatement
+        callCallbackFunctions(iObeyaConnectedPlatform.succesMethods); //si loggué on appelle la/les fonctions de post-sync immédiatement
         return; // on sort d'ici sans code de retour
     }
 
-// Dans le cas on ce n'est pas connecté on lance la connection et la/les fonctions postloginMethods...
+// Dans le cas on ce n'est pas connecté on lance la connection et la/les fonctions succesMethods...
 // 1er appel de connexion à la plateforme pour se logguer.
 
     myxmlr = new XMLHttpRequest();
@@ -52,7 +52,7 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
     myxmlr.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=utf-8");
     myxmlr.withCredentials = true; // comprendre : les cookies sont passés avec les headers
     myxmlr.onerror = function (event, iObeyaConnectedPlatform) {
-         XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
+        XMLHttpErrorHandler(event, iObeyaConnectedPlatform);
     };
     myxmlr.onload = function (event) {
         try {
@@ -86,7 +86,7 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
                     }
 
                 } catch (e) {
-                    catchAllThrow(e, loginfailedMethods);
+                    catchAllThrow(e, failedMethods);
                 }
             };
             myxmlr2.onerror = function (event) {
@@ -94,7 +94,7 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
             };
             myxmlr2.send();
         } catch (e) {
-            catchAllThrow(e, loginfailedMethods);
+            catchAllThrow(e, failedMethods);
         }
     }; // myxmlr.onload = function
 
@@ -110,21 +110,21 @@ function iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform) {
 /*
  *
  * @param {type} e : object message error
- * @param {type} loginfailedMethods : call back si erreur
+ * @param {type} failedMethods : call back si erreur
  * @returns {undefined}
  *
  */
 
-function catchAllThrow(e, loginfailedMethods) {
+function catchAllThrow(e, failedMethods) {
     alert("Erreur lors de l'execution du script :\n\n" + e.message + "\n\n line :\n" + e.stack);
     console.log("stack : " + e.stack);
-    if (loginfailedMethods) {
-        callCallbackFunctions(loginfailedMethods);
+    if (failedMethods) {
+        callCallbackFunctions(failedMethods);
     }
 }
 
 /*
-
+ 
  Fonction qui gère les erreurs dans un appel https://
  Cette fonction permet le reste du code de synchronisation de se poursuivre
  Appelé dans le cadre du contexte d'une connexion iObeya on inscrit la raison de l'erreur dans le
@@ -135,8 +135,8 @@ function XMLHttpErrorHandler(event, iObeyaConnectedPlatform) { // TODO à vérif
     var errMessage = event.target.status;
     if (iObeyaConnectedPlatform) {
         iObeyaConnectedPlatform.connection_message = errMessage;
-        if (iObeyaConnectedPlatform.loginfailedMethods) { // not connected....
-            callCallbackFunctions(iObeyaConnectedPlatform.loginfailedMethods); //si loggué on appelle la/les fonctions de post-sync immédiatement
+        if (iObeyaConnectedPlatform.failedMethods) { // not connected....
+            callCallbackFunctions(iObeyaConnectedPlatform.failedMethods); //si loggué on appelle la/les fonctions de post-sync immédiatement
         }	// on sort naturellement du callback
     } else
         throw new InterfaceException("Erreur à la connexion XMLHttpRequest : " + errMessage);
@@ -152,7 +152,7 @@ function XMLHttpErrorHandler(event, iObeyaConnectedPlatform) { // TODO à vérif
  */
 
 function getRooms(iObeyaConnectedPlatform) {
-    var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
+    var failedMethods = iObeyaConnectedPlatform.failedMethods;
     iObeyaConnectedPlatform.activeRoom = null;
     console.log("Fetch rooms");
     iObeyaConnectedPlatform.rooms = new Array(); //TODO : a disparaite
@@ -186,7 +186,7 @@ function getRooms(iObeyaConnectedPlatform) {
             // GET BOARDS
             getBoards(iObeyaConnectedPlatform);
         } catch (e) {
-            catchAllThrow(e, loginfailedMethods);
+            catchAllThrow(e, failedMethods);
         }
         // nextRequest(); // pourquoi ???? +>> commenté pour confirmer que cela fonctionne sans...
     }; // onload
@@ -198,7 +198,7 @@ function getRooms(iObeyaConnectedPlatform) {
 
 /*
  Note : A la lecture de la nouvelle documentation développeur v3.4, la structure d'un objet board, précise
-
+ 
  {
  "@class": "com.iobeya.dto.BoardNoteDTO", "color": 13158655,
  "container": {
@@ -224,10 +224,10 @@ function getRooms(iObeyaConnectedPlatform) {
  "y": 1254,
  "zOrder": 6
  }
-
+ 
  Container:thecontainervalueofagivenboardelementisusuallytheelementcontainer associated to a board.
  Instead of sending the board's json object, we need to pass an EntityReferenceDTO with the board element container ID
-
+ 
  Il faut utiliser le container.id pour la création, modification d'éléments dans un board(notes / stickers / labels ?)
  */
 
@@ -238,7 +238,7 @@ function getRooms(iObeyaConnectedPlatform) {
  */
 
 function getBoards(iObeyaConnectedPlatform) {
-    var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
+    var failedMethods = iObeyaConnectedPlatform.failedMethods;
     console.log("Fetch boards");
     if (iObeyaConnectedPlatform.boards instanceof Array)
         iObeyaConnectedPlatform.boards.length = 0; // raz
@@ -291,7 +291,7 @@ function getBoards(iObeyaConnectedPlatform) {
                 } //if (elmnt["@class"] === "com.iobeya.dto.BoardDTO")
             }); //for each
         } catch (e) {
-            catchAllThrow(e, loginfailedMethods);
+            catchAllThrow(e, failedMethods);
         }
     };
     myxmlr.send(); // on lance l'appel de la méthode asynchrone.
@@ -300,7 +300,7 @@ function getBoards(iObeyaConnectedPlatform) {
 
 function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
     var myxmlr = null;
-    var loginfailedMethods = iObeyaConnectedPlatform.loginfailedMethods;
+    var failedMethods = iObeyaConnectedPlatform.failedMethods;
     console.log("Getting nodes");
     myxmlr = new XMLHttpRequest();
     myxmlr.open("GET", iObeyaConnectedPlatform.IOBEYAURL + "/s/j/boards/" + boardid + "/details", true);
@@ -428,7 +428,7 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
             iObeyaConnectedPlatform.countBoardtoload--; // pour gérer l'asynchronisme on décompte le compteur global
 
         } catch (e) {
-            catchAllThrow(e, loginfailedMethods);
+            catchAllThrow(e, failedMethods);
         }
     }; // on load
 
@@ -456,9 +456,9 @@ function waitallBoardLoaded(iObeyaConnectedPlatform) {
             // on lance ici la fonctionne de synchro
             clearInterval(timerId);
             console.log("Loaded board complete" + iObcotf.boardfound);
-            var postloginMethods = iObcotf.postloginMethods;
-            if (postloginMethods)
-                callCallbackFunctions(postloginMethods);
+            var succesMethods = iObcotf.succesMethods;
+            if (succesMethods)
+                callCallbackFunctions(succesMethods);
             // nextRequest(); // TODO, @etiquet on commente pour voir si cela fonctionne sans....
             // on dépile maintenant la queue des requetes async à lancer à la fin
             // TODO à retravailler ??? s'il y a plusieurs plateforme / room en jeu.
@@ -471,7 +471,7 @@ function waitallBoardLoaded(iObeyaConnectedPlatform) {
             if (confirm("Seulement " + iObcotf.boardfound + "/" + iObcotf.BOARDSTOSYNC.length + " Boards ont été chargés, poursuive ou annuler ? \n\n (Q: paramétrage ok ?) "))
                 iObcotf.waitcount = 0;
             else
-                catchAllThrow(new InterfaceException("Abandon du loading"), iObcotf.loginfailedMethods);
+                catchAllThrow(new InterfaceException("Abandon du loading"), iObcotf.failedMethods);
         }
         iObcotf.waitcount++;
     }, 500, iObeyaConnectedPlatform); // on check toute les 1/2 secondes
@@ -518,7 +518,7 @@ function parseNoteText(str) {
 /***
  Formatage de la date (dont le jour et le mois sont inversés lorsque interprétés par navigateur
  retourne -1 si la date n'est pas bien formatée
-
+ 
  ***/
 
 /*
@@ -779,15 +779,15 @@ function loadSyncConf(syncID) {
  * @param dmyDate chaîne de caractères au format "DD/MM/YYYY"
  * @returns chaîne de caractères au format "MM/DD/YYYY" si @param valide, false sinon
  function convertDMYToMDY(dmyDate) {
-
+ 
  let dmyArray = dmyDate.split("/");
-
+ 
  if ( (typeof dmyDate === 'string' || dmyDate instanceof String)
  && !dmyArray.some(isNaN) )
  {
  return dmyArray[1] + '/' + dmyArray[0] + '/' + dmyArray[2];
  }
-
+ 
  return null;
  }*/
 

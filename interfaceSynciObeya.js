@@ -137,29 +137,28 @@ function startSync(syncID) {
         loadSyncConf(syncID);
         initiateiObeyaPlateformeMainStruct(syncID);
 
-        //Callback methods qui seront appellées quand/si le login sur la plateforme iObeya est réussi ou failed
-        // il est possible d'utiliser une fonction ou un array de fonctions executées les unes après les autres.
+        // Callback methods qui seront appellées quand/si le processus de synchronisation avance avec condtions succes/failed
+        // Cela permet de reproduire un fonctionnement synchrone alors que tout les appels aux plateformes sont asynchrones.
+        // Il est possible d'utiliser une fonction ou un array de fonctions executées les unes après les autres.
 
-        g_iObeyaPlatforms[IOBEYAURL].loginfailedMethods = function () {
-            ErrorLogingReloadPage("from intialisation");
+        // La première utilisation : appel après le login sur sharepoint pour récuperer la liste RIDA
+        // 1 - pour lancer le login iObeya, => connectiObeyaPtf
+        // 2 - qui lancera à son tour la syncho. syncNotes(iObeyaConnectedPlatform)
+        // 3 - qui appellera SharePointReloaded une fois la premiere passe de synchro réalisée.
+
+        g_iObeyaPlatforms[IOBEYAURL].failedMethods = function () {
+            ErrorLogingReloadPage("from initialisation");
         };
-        g_iObeyaPlatforms[IOBEYAURL].postloginMethods = []; // on utilise un array de fonction ;)
-        g_iObeyaPlatforms[IOBEYAURL].postloginMethods.push(
+        g_iObeyaPlatforms[IOBEYAURL].succesMethods = []; // on utilise un array de fonction ;)
+        g_iObeyaPlatforms[IOBEYAURL].succesMethods.push(
                 function () {
-                    syncNotes(g_iObeyaPlatforms[IOBEYAURL]);
+                    connectiObeyaPtf(g_iObeyaPlatforms[IOBEYAURL]);
                 }
         );
 
-        //TODO/TEST: fonction de test. le reload de fin est géré par les calls backs des cruds.
-        /* g_iObeyaPlatforms[IOBEYAURL].postloginMethods.push(
-         function () {
-         ErrorLogingReloadPage("fin de la synchronisation");
-         }
-         );*/
-
-        //TODO,evolution :faire un swith ici pour gérer d'autre sources de données que Sharepoint.
-        // Mise à jour de la liste des données RIDA
-        // note : le contexte ne peut être récupéré que si le script sp.js est loadé, on utilise cette fonction pour ça
+        //TODO,evolution :faire un swith ici pour gérer d'autres sources de données que Sharepoint.
+        // Note : le contexte ne peut être récupéré que si le script sp.js est loadé, 
+        // utilise la fonction suivante pour ça
 
         ExecuteOrDelayUntilScriptLoaded(function () {
 
@@ -177,7 +176,7 @@ function startSync(syncID) {
             retrieveActorsList_sync(g_iObeyaPlatforms[IOBEYAURL]);
 
             /**
-             * when succeed following method will callbacks function specified .postloginMethods when SP list retrieved
+             * when succeed following method will callbacks function specified .succesMethods when SP list retrieved
              * ( ex: syncNotes(g_iObeyaPlatforms[IOBEYAURL]) ),
              * result in .ridaNodes[] variables of g_iObeyaPlatforms[IOBEYAURL]
              */
@@ -218,8 +217,8 @@ function initiateiObeyaPlateformeMainStruct(syncID) {
     g_iObeyaPlatforms[IOBEYAURL].ESCALLATION_MAPPING = ESCALLATION_MAPPING;
     g_iObeyaPlatforms[IOBEYAURL].DROP_ZONE = DROP_ZONE;
     g_iObeyaPlatforms[IOBEYAURL].syncID = syncID;
-    g_iObeyaPlatforms[IOBEYAURL].loginfailedMethods = null;
-    g_iObeyaPlatforms[IOBEYAURL].postloginMethods = null;
+    g_iObeyaPlatforms[IOBEYAURL].failedMethods = null;
+    g_iObeyaPlatforms[IOBEYAURL].succesMethods = null;
 
 }
 
@@ -270,9 +269,35 @@ function refreshTable(context) {
  * TODO : transformer la fonction pour quelle fonctionne avec la liste des plateforms iObeya comme paramètre
  * @param iObeyaConnectedPlatform
  */
+
+function connectiObeyaPtf(iObeyaConnectedPlatform) {
+
+    // Initialisation de la connexion sur iObeya
+    // vérification qu'il n'a pas déjà eu un appel dans le passé ou qu'une autre synchro est en cours...
+
+    if (iObeyaConnectedPlatform.synclist instanceof Array)
+        if (iObeyaConnectedPlatform.synclist.length > 1) {
+            throw new InterfaceException("Une autre instance est déjà en cours sur votre navigateur Exiting...\n syncList!=0 ");
+        }
+
+    if (g_notificationID)
+        g_notificationID.close(SP.UI.DialogResult.OK);
+    varTitle = "Préparation de la synchronisation...";
+    varMsg = g_versionscript + "Connexion à IObeya...";
+    g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, varMsg, 120, 700);
+    g_iObeyaPlatforms[IOBEYAURL].succesMethods = []; // on utilise un array de fonction ;)
+    g_iObeyaPlatforms[IOBEYAURL].succesMethods.push(
+            function () {
+                syncNotes(g_iObeyaPlatforms[IOBEYAURL]);
+            }
+    );
+    iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform);
+}
+
 function syncNotes(iObeyaConnectedPlatform) {
 
     try {
+
         console.log("Entering syncNotes");
         console.log(iObeyaConnectedPlatform.iObeyaNodes.length + " iObeyaNodes entries");
         console.log(iObeyaConnectedPlatform.ridaNodes.length + " Rida entries");
@@ -404,57 +429,158 @@ function performSyncCRUDs(iObeyaConnectedPlatform) {
                         //PostiObeyaNodes(l_connectedPtf, l_connectedPtf.rollsToRefresh);
                     }
 
+                    if (g_notificationID)
+                        g_notificationID.close(SP.UI.DialogResult.OK);
+                    var Msg = g_versionscript + "Lancement des commits Sharepoint & iObeya";
+                    g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
+
                     CAMLUpdateSyncLogList(iObeyaConnectedPlatform);  // On construit la requete pour faire la mise à jour de liste sharepoint logsyncActions
 
                 }
             }
         }
 
-        // A cette instant, l'ensemble des requetes REST iObeya ont été envoyée ( mais pas encore traitée car asynchrones)
-        // Et l'ensemble des requêtes CAML pour Sharepoint ont été préparée et sont attachées au "contexte"
-        // Il faut "commiter" les 2 plateformes.
-        // coté iObeya : cela permet de valider les modifications et aussi de notifier les clients qui feront un refresh
-        // coté Sharepoint : cela permet d'exécuter la requête CAML
-        //
-        // On lance un timer asychrone qui attend que tous les threads "iObeya" soient terminées
-        //pour lancer le "Commit" iObeya puis le commit Sharepoint
-
-        iObeyaConnectedPlatform.iObeyaToCommit = true; // flag pour la logique
-
-        var timerIdsharepointcommit = window.setInterval(function (iobcptf) {
-            // note: la fonction timer s'exécute hors du contexte de la fonction actuelle,
-            // il faut lui passer le context iobcptf pour pouvoir disposer des variables nécessaires
-            // on attend que toute les requêtes CRUD soient passées.
-            // on déclenche le commit iObeya
-            if (iobcptf.requestQueue.length === 0 && iobcptf.iObeyaToCommit === true) {  // attente
-                console.log("Commit iObeya");
-                commitiObeyaChanges(iobcptf);
-                iobcptf.iObeyaToCommit = false
-                return;
-            }
-
-            // si le commit iobeya a été effectué, maintenant on déclenche le commit sharepoint
-            if (iobcptf.requestQueue.length === 0 && iobcptf.iObeyaToCommit == false) {  // attente
-                console.log("Commit SharePoint");
-                console.log(iobcptf.clientContext); // Contrôle de l'état de la session SharePoint
-                if (g_notificationID)
-                    g_notificationID.close(SP.UI.DialogResult.OK);
-                var Msg = g_versionscript + " " + "Execution du commit Sharepoint";
-                g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
-
-                iobcptf.clientContext.executeQueryAsync(Function.createDelegate(this, function () {
-                    SharePointCommitQuerySucceeded(iObeyaConnectedPlatform);
-                }),
-                        Function.createDelegate(this, this.onQueryFailed_test)
-                        );
-                clearInterval(timerIdsharepointcommit);
-            }
-
-        }, 1000, iObeyaConnectedPlatform);
+        // function de gestion des actions post-synchro, on ne revient pas de cette fonction
+        Commit_Plateforms(iObeyaConnectedPlatform);
 
     } catch (e) {
         throw e; // on propage le throw au dessus.
     }
+}
+
+/*
+ * 
+ * A cette instant, l'ensemble des requetes REST iObeya ont été envoyée ( mais pas encore traitée car asynchrones)
+ * Et l'ensemble des requêtes CAML pour Sharepoint ont été préparée et sont attachées au "contexte"
+ * Gestion de la première passe, il faut : 
+ * - "Commiter" les 2 plateformes.
+ * - coté iObeya : cela permet de valider les modifications et aussi de notifier les clients qui feront un refresh
+ * - coté Sharepoint : cela permet d'exécuter la requête CAML
+ * 
+ * Gestion de la seconde passe :
+ * reloader le sharepoint après les modifications. ( obtention des nouveaux indexs suite à la création des entrées RIDA)
+ * mener les modifications          
+ 
+ * @param {type} iObeyaConnectedPlatform
+ * @returns {undefined}
+ */
+
+function Commit_Plateforms(iObeyaConnectedPlatform) {
+
+    iObeyaConnectedPlatform.iObeyaToCommit = true; // flag pour la logique
+    iObeyaConnectedPlatform.SharepointToCommit = 4; // flag pour la logique
+
+    // Step #2  on lance le commit sharepoint ( asynchrone )
+    console.log("Déclenchement du Commit SharePoint");
+
+    iObeyaConnectedPlatform.clientContext.executeQueryAsync(Function.createDelegate(this, function () {
+        SharePointCommitQuerySucceeded(iObeyaConnectedPlatform);
+    }), Function.createDelegate(this, this.onQueryFailed_test));
+
+    // on lance le timer d'attente
+
+    var timerIdsharepointcommit = window.setInterval(function (iobcptf) {
+        // note: la fonction timer s'exécute hors du contexte de la fonction actuelle,
+        // il faut lui passer le context iobcptf pour pouvoir disposer des variables nécessaires
+        // on attend que toute les requêtes CRUD iObeya soient passées, on déclenche le commit iObeya
+        // Step #2 On lance un timer asychrone qui attend que tous les threads "iObeya" soient terminées, pour lancer le "Commit" iObeya puis le commit Sharepoint
+
+        if (iobcptf.requestQueue.length === 0 && iobcptf.iObeyaToCommit === true) {  // attente que les threads soient terminés
+            console.log("Lancement du Commit iObeya");
+            commitiObeyaChanges(iobcptf);
+            iobcptf.iObeyaToCommit = false;
+        }
+
+        //On lance un timer asychrone qui attend que tous les threads "iObeya" soient terminées, pour lancer le "Commit" iObeya puis le commit Sharepoint
+        // si le commit iobeya a été effectué, maintenant on déclenche le commit sharepoint
+        if (iobcptf.requestQueue.length === 0 && iobcptf.iObeyaToCommit == false && iobcptf.SharepointToCommit == 0) {  // attente
+
+            console.log(iobcptf.clientContext); // Contrôle de l'état de la session SharePoint
+
+            if (g_notificationID)
+                g_notificationID.close(SP.UI.DialogResult.OK);
+            var Msg = g_versionscript + "Ensemble des post-traitements finalisés";
+            g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
+
+            syncCompleted(iobcptf);
+            clearInterval(timerIdsharepointcommit);
+        }
+    }, 500, iObeyaConnectedPlatform);
+
+}
+
+// une fonction qui affiche que le processus est terminé et affiche les statistiques
+
+function syncCompleted(iObeyaConnectedPlatform) {
+
+    console.log("Update RIDA : success");	// Trace
+    var stats = getStats(iObeyaConnectedPlatform.synclist);
+    var statsMessage = "- Sens RIDA > iObeya: \n\n"
+            + stats[syncType.todo_createiObeya] + " Note(s) créée(s) \n"
+            + stats[syncType.todo_synciObeya] + " Note(s) synchronisée(s) \n"
+            + stats[syncType.todo_removeiObeya] + " Note(s) à la corbeille \n"
+            + stats[syncType.todo_moveBoardiObeya] + " Note(s) changée(s) de panneau\n\n"
+            + "- Send iObeya > RIDA : \n\n"
+            + stats[syncType.todo_createRida] + " Tâche(s) créée(s)\n"
+            + stats[syncType.todo_syncRida] + " Tâche(s) synchronisée(s)\n"
+            + stats[syncType.todo_removeRida] + " Tâche(s) désactivée(s)\n\n"
+            + "- Sens iObeya > iObeya : \n\n"
+            + stats[syncType.todo_cloneiObeya] + " Tâche(s) clonée(s)\n\n"
+            + "- Erreurs : \n\n"
+            + iObeyaConnectedPlatform.syncErrors
+            + " erreur(s) de synchronisation "; // TODO à passer à SyncErrors
+
+    // Rafraîchissement retour à la page
+    alert("La synchronisation a été effectuée, statistiques \n\n" + statsMessage);
+    ErrorLogingReloadPage("Synchronisation terminée"); // on se sert de cette fonction pour sortir et rafraichir la page
+}
+
+// gestion des sémaphores entre threads
+function SharePointCommitQuerySucceeded(iObeyaConnectedPlatform) {
+    console.log("SharePointCommitQuerySucceeded");	// Trace
+    iObeyaConnectedPlatform.SharepointToCommit = 3; // flag pour la logique
+
+    if (g_notificationID)
+        g_notificationID.close(SP.UI.DialogResult.OK);
+    var Msg = g_versionscript + "Lancement post-traitement (reload Sharepoint)";
+    g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
+
+    // log des actions
+    CAMLUpdateSyncLogList(iObeyaConnectedPlatform);  // On construit la requete pour faire la mise à jour de liste sharepoint logsyncActions
+
+    // On prepare la fonction de complétion post reload de la liste sharepoint
+    iObeyaConnectedPlatform.succesMethods = function () {
+        SharePointReloaded(iObeyaConnectedPlatform);
+    };
+
+    // On lance le rechargement de la liste sharepoint
+    retrieveRidaListItems(iObeyaConnectedPlatform);
+}
+
+
+/*
+ * Fonction qui est appelée après le reload Sharepoint
+ * Elle permet de mener des (posts) traitement, 
+ * typiquement traiter des items rida après leur création pour avoir leur iD Sharepoint
+ * ex: lien entre nouvelles tâches créés coté iObeya, ou mise à jour des dates ( TODO: vérifier ce dernier point) 
+ * @param {type} iObeyaConnectedPlatform
+ * @returns {undefined}
+ */
+function SharePointReloaded(iObeyaConnectedPlatform) {
+    console.log("SharePointReloaded");	// Trace
+    iObeyaConnectedPlatform.SharepointToCommit = 2; // flag pour la logique
+
+    if (g_notificationID)
+        g_notificationID.close(SP.UI.DialogResult.OK);
+    var Msg = g_versionscript + "Post-traitement liens de dépendance entre les éléments";
+    g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
+
+// TODO : ici on relance la mise à jour des predecessors ( lien entre les tâches )
+
+
+// on indique au timer d'attente que l'on a terminé le post-traitement
+    iObeyaConnectedPlatform.SharepointToCommit = 0; // flag pour la logique
+
 }
 
 /*
@@ -502,11 +628,11 @@ function ConnectAlliObeyaPlatforms(iObeyaConnectedPlatform) {
                 parent[syncelement.target_url] = createConnectionElement(iObeyaConnectedPlatform, syncelement);
 
                 // on place maintenant les callback pour la fonction de connexion.
-                parent[syncelement.target_url].postloginMethods = function () {
+                parent[syncelement.target_url].succesMethods = function () {
                     console.log("Callback sucess : ConnectAlliObeyaPlatforms, connect ok... url : " + syncelement.target_url);
                     iObeyaConnectedPlatform.countBoardtoload--; // TODO : vérifier que cela passe bien le contexte de la plateforme principale...
                 };
-                parent[syncelement.target_url].loginfailedMethods = function () {
+                parent[syncelement.target_url].failedMethods = function () {
                     console.log("Callback ERROR : ConnectAlliObeyaPlatforms, connect failed... url : " + syncelement.target_url);
                     iObeyaConnectedPlatform.countBoardtoload--; // TODO : vérifier que cela passe bien le contexte de la plateforme principale...
                 };
@@ -646,7 +772,7 @@ function InitiateiObeyaWorkingContextVariables(createConnectionElement) {
 
 /***
  Fonction qui scrute la liste et lance les connections vers les plateformes cibles si elles se sont pas connectées
- note : l'ensemble des plateformes devront avoir le cors correctement configuré
+ Note : l'ensemble des plateformes devront avoir le CORS (cross origin ressource sharing) correctement configuré
  *
  * @param {type} iObeyaConnectedPlatform
  * @param {type} callbackfonction
@@ -2625,27 +2751,3 @@ function getStats(array) {
     return stats;
 }
 
-function SharePointCommitQuerySucceeded(iObeyaConnectedPlatform) {
-
-
-    console.log("Update RIDA : success");	// Trace
-    var stats = getStats(iObeyaConnectedPlatform.synclist);
-    var statsMessage = "- Sens RIDA > iObeya: \n\n"
-            + stats[syncType.todo_createiObeya] + " Note(s) créée(s) \n"
-            + stats[syncType.todo_synciObeya] + " Note(s) synchronisée(s) \n"
-            + stats[syncType.todo_removeiObeya] + " Note(s) à la corbeille \n"
-            + stats[syncType.todo_moveBoardiObeya] + " Note(s) changée(s) de panneau\n\n"
-            + "- Send iObeya > RIDA : \n\n"
-            + stats[syncType.todo_createRida] + " Tâche(s) créée(s)\n"
-            + stats[syncType.todo_syncRida] + " Tâche(s) synchronisée(s)\n"
-            + stats[syncType.todo_removeRida] + " Tâche(s) désactivée(s)\n\n"
-            + "- Sens iObeya > iObeya : \n\n"
-            + stats[syncType.todo_cloneiObeya] + " Tâche(s) clonée(s)\n\n"
-            + "- Erreurs : \n\n"
-            + iObeyaConnectedPlatform.syncErrors
-            + " erreur(s) de synchronisation "; // TODO à passer à SyncErrors
-
-    // Rafraîchissement retour à la page
-    alert("La synchronisation a été effectuée, statistiques \n\n" + statsMessage);
-    ErrorLogingReloadPage("Synchronisation terminée"); // on se sert de cette fonction pour sortir et rafraichir la page
-}

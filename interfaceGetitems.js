@@ -1,23 +1,23 @@
 /*** Récupère les données Sharepoint ***/
 
 function retrieveRidaListItems(iObeyaConnectedPlatform) {
-    var  camlQuery,collListItem,oList;
+    var camlQuery, collListItem, oList;
 
-	try {
-	    oList  = iObeyaConnectedPlatform.clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
-	    camlQuery = new SP.CamlQuery();
-	    camlQuery.set_viewXml("<View />");
-	    collListItem = oList.getItems(camlQuery);
-	    iObeyaConnectedPlatform.clientContext.load(collListItem);
-	    iObeyaConnectedPlatform.clientContext.executeQueryAsync(
-			Function.createDelegate(this, function(sender, args){
-					onSharepointRidaListLoadSucceed(sender, args,collListItem,iObeyaConnectedPlatform);
-									} ),
-			Function.createDelegate(this, this.onQueryFailed)
-			);
+    try {
+        oList = iObeyaConnectedPlatform.clientContext.get_web().get_lists().getByTitle(LISTSHAREPOINT_TITLE);
+        camlQuery = new SP.CamlQuery();
+        camlQuery.set_viewXml("<View />");
+        collListItem = oList.getItems(camlQuery);
+        iObeyaConnectedPlatform.clientContext.load(collListItem);
+        iObeyaConnectedPlatform.clientContext.executeQueryAsync(
+                Function.createDelegate(this, function (sender, args) {
+                    onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConnectedPlatform);
+                }),
+                Function.createDelegate(this, this.onQueryFailed)
+                );
 
-	} catch (e) {
-		throw new InterfaceException("retrieveRidaListItems :"+e.message);
+    } catch (e) {
+        throw new InterfaceException("retrieveRidaListItems :" + e.message);
     }
 }
 
@@ -40,10 +40,11 @@ function formateFieldToExport(field) {
                     data = field[arr].get_lookupValue();
                     return data; // TODO / NOTE : pour l'instant on ne gère que la première valeur du champs. Si c'est multi évalué tant pis....
                 }
-                if (field[arr] instanceof SP.Taxonomy.TaxonomyFieldValue) { // cas acteur utilisant un array de taxonomie
-                    data = field[arr].get_label();
-                    return data; // TODO / NOTE : pour l'instant on ne gère que la première valeur du champs.
-                }
+                if (SP.Taxonomy)
+                    if (field[arr] instanceof SP.Taxonomy.TaxonomyFieldValue) { // cas acteur utilisant un array de taxonomie
+                        data = field[arr].get_label();
+                        return data; // TODO / NOTE : pour l'instant on ne gère que la première valeur du champs.
+                    }
             }
             return "";
         }
@@ -52,20 +53,13 @@ function formateFieldToExport(field) {
             return field.get_lookupValue();
         }
 
-        if (field instanceof SP.Taxonomy.TaxonomyFieldValue) { // ex Champs simple acteur taxonomie
-            return field.get_label();
-        }
+        var ltypo = typeof [field];
 
-        if (field instanceof SP.FieldUserValue) { 	//  type de donnée non traitée
-            return field.get_lookupValue(); 
-                        
-          /*  if (field.hasOwnProperty("$5g_1")) // propriété contenant le nom de l'utilisateur 
-                return field["$5g_1"];
-            else
-                return "/!\\type non traite";*/
-            
-        }
- 
+        if (SP.Taxonomy)
+            if (field instanceof SP.Taxonomy.TaxonomyFieldValue) { // ex Champs simple acteur taxonomie
+                return field.get_label();
+            }
+
         var debug = true; // pour faire un beakpoint
         return field; // par defaut on transmet la valeur (on garde le type d'objet fourni)
 
@@ -79,15 +73,15 @@ function formateFieldToExport(field) {
 /***
  Succès de la récupération des données Sharepoint : stockage dans l'array ridaNodes
  Cette fonction est une fonction "classique" de sharepoint en cas de succès
- C'est la fonction qui récupère la liste sharepoint
+ C'est la fonction qui récupère la liste sharepoint et créé un array d'objet dans => iObeyaConnectedPlatform.ridaNodes
  ***/
-
-// TODO: à vérifier que l'on a bien les paramètres passés....
 
 function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConnectedPlatform) {
     var fields, l_ridaobj, listItemEnumerator, key;
+   
     l_ridaNodes = [];
-
+    iObeyaConnectedPlatform.ridaNodes = []; // on vide s'il y avait une liste précédemment
+    
     try {
         console.log("Retrieve RIDA items");
         console.log(collListItem);
@@ -98,11 +92,13 @@ function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConne
             fields = listItemEnumerator.get_current().get_fieldValues();
             l_ridaobj = new Object();
             l_ridaobj.idRida = fields.ID;
+            
+            // On boucle sur les champs attendus (cf configuration) et on converti les objets sharepoint en quelques choses d'utilisation
             for (key in SHAREPOINTLIST_MATCHINGNAME) { // SHAREPOINTLIST_MATCHINGNAME defined in interfaceConfig.js
                 l_ridaobj[key] = formateFieldToExport(fields[SHAREPOINTLIST_MATCHINGNAME[key]]);
             }
 
-            // si la donnée panneau est vide on force la valeur par défaut
+            // Note : Si la donnée panneau est vide on force la valeur par défaut
             // et si le panneau précisé est en dehors des noms connu => valeur par défaut également
 
             var found = false;
@@ -120,21 +116,8 @@ function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConne
             iObeyaConnectedPlatform.ridaNodes.push(l_ridaobj); // on ajoute l'entrée dans l'array
         }
 
-        // Initialisation de la connexion sur iObeya
-        // vérification qu'il n'a pas déjà eu un appel dans le passé ou qu'une autre synchro est en cours...
-
-        if (iObeyaConnectedPlatform.synclist instanceof Array)
-            if (iObeyaConnectedPlatform.synclist.length > 1) {
-                throw new InterfaceException("Une autre instance est déjà en cours sur votre navigateur Exiting...\n syncList!=0 ");
-            }
-
-        // on appelle la fonction de login iObeya ( le context inclu les fonctions de calllbacks, typiquement *syncnote(xxx)* )
-        if (g_notificationID)
-            g_notificationID.close(SP.UI.DialogResult.OK);
-        varTitle = "Préparation de la synchronisation...";
-        varMsg = g_versionscript + "Connexion à IObeya...";
-        g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, varMsg, 120, 700);
-        iObeyaPlatformLoginAndGetItems(iObeyaConnectedPlatform);
+        // fini, on lance la méthode de connexion si succes 
+        callCallbackFunctions(iObeyaConnectedPlatform.succesMethods);
 
     } catch (e) {
         var msg = "Une erreur est survenue à la lecture de la liste sharepoint : \n\n"
@@ -142,37 +125,37 @@ function onSharepointRidaListLoadSucceed(sender, args, collListItem, iObeyaConne
                 + "\n\npossiblement une des propriétés de la liste \"SHAREPOINTLIST_MATCHINGNAME\" n'a pas été trouvée parmi les colonnes de la table RIDA. Vérifiez le fichier de configuration \n ";
         alert(msg);
         console.log(msg);
-        ErrorLogingReloadPage();
+        callCallbackFunctions(iObeyaConnectedPlatform.failedMethods); // on lance la methode si failed
     }
 }
 
 /***
-
+ 
  Récupération de la liste des acteurs de la banque de termes SharePoint
  TODO: déplacer dans un autre fichier.
-
+ 
  Précisions:
  les acteurs utilisés ici ne sont pas issus de la base de compte de l'AD du sharepoint
  sinon les acteurs externes à l'organisation ne pourraient pas être traité.
-
+ 
  On utilise un termeset / groupeterm qui contient le nom des acteurs.
-
+ 
  arborescence :
  Banque taxonomie de la collection de site > termset > termgroup > term(s)
-
+ 
  Ces valeurs sont précisées dans le fichier de configration
  mise à jour de "g_actorsTermsList" qui contient une liste à plat
-
+ 
  Les appels sont asynchrones...
-
+ 
  D'autre fonctions connexes existent pour la synchronisation des rolls dans les panneaux dans le fichier interfacerefreshactors.js
  //  _sync pour dissocier d'une fonction similaire appelée dans call refreshactor.asp
-
+ 
  note : interfacerefreshactors.js n'est pas inclus dans les en-têtes des pages,
  ses methodes ne peuvent pas être appellées directement via le bouton iObeya DONC > inclusion de cette fonction ici.
-
+ 
  23 juin 2017 : modification de la façon dont la liste des acteurs est gérés. Il est maintenant possible de gérer les acteurs depuis une autre liste.
-
+ 
  ***/
 /*
  *
@@ -187,7 +170,7 @@ function retrieveActorsList_sync(iObeyaPlatformDataArray) {
     varTitle = "Préparation de la synchronisation...";
     varMsg = g_versionscript + "Récupération de la liste des acteurs...";
     g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, varMsg, 120, 700);
-    
+
     if (window.hasOwnProperty('ACTORLIST_TITLE')) // si l'on a paramétrer le nom d'une liste on utilise cette liste.
         retrieveActorsList_sync_splist(iObeyaPlatformDataArray);
     else
@@ -212,8 +195,10 @@ function retrieveActorsList_sync_splist(iObeyaPlatformDataArray) {
         var l_collListItem2 = l_oList.getItems(l_camlQuery);
         clientContext.load(l_collListItem2);
         clientContext.executeQueryAsync(Function.createDelegate(this,
-            function(sender, args){ onGetQuerySucceededActorslist(sender, args,l_collListItem2); } ),
-            Function.createDelegate(this, this.onQueryFailed));
+                function (sender, args) {
+                    onGetQuerySucceededActorslist(sender, args, l_collListItem2);
+                }),
+                Function.createDelegate(this, this.onQueryFailed));
     } catch (e) {
         throw new InterfaceException("Les données de la liste d'acteurs \"" + ACTORLIST_TITLE + "\" n'ont pas pu être trouvées dans Sharepoint");
     }
@@ -229,7 +214,7 @@ function retrieveActorsList_sync_splist(iObeyaPlatformDataArray) {
  *
  */
 
-function onGetQuerySucceededActorslist(sender, args,l_collListItem2) {
+function onGetQuerySucceededActorslist(sender, args, l_collListItem2) {
     var fields, l_ridaobj, listItemEnumerator, key, actorname, actorID, content = {};
     g_actorsTermsList = []; // vider le tableau d'objet ( on déréférence l'ancienne valeur )
     g_actorsTermsListTable = []; // la liste d'array d'acteurs par panneau
@@ -246,8 +231,15 @@ function onGetQuerySucceededActorslist(sender, args,l_collListItem2) {
 
         while (listItemEnumerator.moveNext()) {
             fields = listItemEnumerator.get_current().get_fieldValues();
-            actorname = formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["actor"]]).trim();
-            panneauactor = formateFieldToExport(fields[ACTORLIST_MATCHINGNAME["PanneauiObeya"]]).trim();
+
+            actorname = fields[ACTORLIST_MATCHINGNAME["actor"]];
+            if (actorname != null)
+                actorname = formateFieldToExport(actorname).trim();
+
+            panneauactor = fields[ACTORLIST_MATCHINGNAME["PanneauiObeya"]]
+
+            if (panneauactor != null)
+                panneauactor = formateFieldToExport(panneauactor).trim();
             actorID = formateFieldToExport(fields["ID"]);
 
             if (actorname) {
@@ -257,6 +249,7 @@ function onGetQuerySucceededActorslist(sender, args,l_collListItem2) {
                 content["ID"] = actorID;
                 g_actorsTermsList.push(content); // on ajouter l'acteur dans la liste
             }
+
             if (panneauactor) {	// on ajoute l'entrée aux listes dédiées par panneau
                 for (var panneau in g_actorsTermsListTable) {
                     if (panneauactor.toLocaleLowerCase() === panneau.toLocaleLowerCase()) // s'il n'est pas dans la liste on ne le traite pas
