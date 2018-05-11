@@ -250,7 +250,7 @@ function commitiObeyaChanges(iObeyaConnectedPlatform) {
 
                             xhttpr[ii] = getJSONData(parent[prop], parent[prop].IOBEYAURL + "/s/j/meeting/commit/" + parent[prop].clientId
                                     + "?roomId=" + parent[prop].rooms[ii].id
-                                    + "&boardId=" // si l'on laisse boardid vide toutes les boards de la room sont raffraichies // + iObeyaConnectedPlatform.boards[i].id
+                                    + "&boardId=" // si l'on laisse boardid vide toutes les boards de la room sont raffraichies // + iObeyaConnectedPlatform.boards[i].id // TODO : a vérifier.
                                     ); // requête jsonhttp Async, ajouter cette requêt dans la queue.
 
                             xhttpr[ii].onload = function () { // fonction Asynchrone appelée sur la fin de l'appel http.
@@ -593,6 +593,7 @@ function onQueryFailed_test(sender, args) {
 
 function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, ok_text) {
     var error = 0;
+    
     try {
         var l_oList = iObeyaConnectedPlatform.oList;
         var oListItem = l_oList.getItemById(ridaId);
@@ -611,11 +612,10 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
         var hasprecedessor = getNotePredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote); // on ne place pas le prédécesseur car il faut avoir l'id des items en mémoire pour travailler
 
         // Date de modification
-        var modifdate = new Date(getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes));
-       oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate);
-       
-// oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["creationDate"], "3/3/2223");
-        //oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], "2/2/2222");
+        var modifdate =getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes);
+        var modifdate_str =  new Date(modifdate);
+
+       oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["modificationDate"], modifdate_str);
         
         //Mise à jour du tableau
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["PanneauiObeya"], iObeyaNote.boardname);
@@ -631,7 +631,8 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
 
         oListItem.update();
 
-        console.log("Create CAML query : Update RIDA sur l'id iObeya :" + iObeyaNote.id + " errors count :" + error + " modif date :" + modifdate);
+        console.log("Create CAML query : Update RIDA sur l'id iObeya :" + iObeyaNote.id +" /"+ iObeyaNote.props.content + " Errors count :" + error + " Modif date :" + modifdate +" /"+modifdate_str );
+        
     } catch (e) {
         throw e;
     }

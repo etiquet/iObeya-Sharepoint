@@ -434,8 +434,6 @@ function performSyncCRUDs(iObeyaConnectedPlatform) {
                     var Msg = g_versionscript + "Lancement des commits Sharepoint & iObeya";
                     g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
 
-                    CAMLUpdateSyncLogList(iObeyaConnectedPlatform);  // On construit la requete pour faire la mise à jour de liste sharepoint logsyncActions
-
                 }
             }
         }
@@ -546,7 +544,7 @@ function SharePointCommitQuerySucceeded(iObeyaConnectedPlatform) {
     g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
 
     // log des actions
-    CAMLUpdateSyncLogList(iObeyaConnectedPlatform);  // On construit la requete pour faire la mise à jour de liste sharepoint logsyncActions
+    //CAMLUpdateSyncLogList(iObeyaConnectedPlatform);  // On construit la requete pour faire la mise à jour de liste sharepoint logsyncActions
 
     // On prepare la fonction de complétion post reload de la liste sharepoint
     iObeyaConnectedPlatform.succesMethods = function () {
@@ -554,7 +552,9 @@ function SharePointCommitQuerySucceeded(iObeyaConnectedPlatform) {
     };
 
     // On lance le rechargement de la liste sharepoint
-    retrieveRidaListItems(iObeyaConnectedPlatform);
+//    retrieveRidaListItems(iObeyaConnectedPlatform);
+    syncCompleted(iObeyaConnectedPlatform); // TODO:TEST TEST TEST TEST
+
 }
 
 
@@ -946,11 +946,12 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                 // important :  faut tenir compte d'une TOLERANCEINTERVAL, car la synchronisation des serveurs peut ne pas être parfaite + latence internet.
 
                 // code pour déboggage sur les dates.
-                console.log(" comparaison de date rida, titre : " + ridaObject.subject + " Rida date" + (ridaObject.modificationDate).toString() + " iObeya note+overlay obj date:" + (noteModificationDate).toString() + " diff Abs : " + ((ridaObject.modificationDate) - noteModificationDate).toString() + "Intervalle de tolérance:" + TOLERANCEINTERVAL);
+                console.log(" comparaison de date rida, titre : " + ridaObject.subject + " Rida date" + (ridaObject.modificationDate).toString() + " /" + new Date(ridaObject.modificationDate) + " iObeya note+overlay obj date:" + (noteModificationDate).toString() + " /" + new Date(noteModificationDate) + " diff Abs : " + ((ridaObject.modificationDate) - noteModificationDate).toString() + "Intervalle de tolérance:" + TOLERANCEINTERVAL);
 
-                if (ridaObject.synchroiObeya && ridaObject.status != DELETED_STATUS
-                        && (!ridaObject.modificationDate || !noteModificationDate ||
-                                (Math.abs(ridaObject.modificationDate) - noteModificationDate) > TOLERANCEINTERVAL)){
+                if (
+                        ridaObject.synchroiObeya && ridaObject.status != DELETED_STATUS &&
+                        Math.abs(ridaObject.modificationDate - noteModificationDate) > TOLERANCEINTERVAL
+                        ) {
 
                     if ((ridaObject.modificationDate) > noteModificationDate) {
                         console.log("ridaObject.modificationDate > noteModificationDate :" + ((ridaObject.modificationDate) > noteModificationDate));
@@ -959,7 +960,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                         l_synclist[l_synclist.length - 1].duedateupdated = duedateupdated;
                         // note : l'entrée Rida sera mise à jour après l'update iObeya automatiquement.
                     } else {
-                        console.log("else : ridaObject.modificationDate <= noteModificationDate");
+                        console.log(" ridaObject.modificationDate <= noteModificationDate");
                         // noeud iObeya plus récent > rida >> Cas n°4 : mise à jour RIDA
                         // on vérifie si la duedate d'iObeya doit être mise à jour avant de faire la synchro
                         l_synclist = addSyncObject(l_synclist, syncType.todo_syncRida, ridaObject.idRida, iObeyaObject.id, status_todo);
@@ -1149,7 +1150,8 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                         syncObject.status = updateSyncStatus(result); // s'il y a erreur => on flag en erreur
                         // forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
                         // a factoriser avec celui de create rida...
-                        if (iObeyaObject.toreupdate != undefined) {
+
+                     if (iObeyaObject.toreupdate != undefined) {
                             iObeyaConnectedPlatform.nodesToUpdate.push(iObeyaObject);
                         }
 
@@ -1168,6 +1170,7 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                         syncObject.status = updateSyncStatus(result);
                         // forcer la mise à jour de la note iObeya si retraitement des données charges (ajoute + "/jh xxx" au contenu)
                         // a factoriser avec celui de create rida...
+                        
                         if (iObeyaObject.toreupdate != undefined) {
                             iObeyaConnectedPlatform.nodesToUpdate.push(iObeyaObject);
                         }
