@@ -574,7 +574,7 @@ function onQuerySucceeded_test() {
 function onQueryFailed_test(sender, args) {
 
     alert('Request failed. ' + args.get_message() + '\n' + args.get_stackTrace());
-    ErrorLogingReloadPage("Erreur pendant execution du script"); // on se sert de cette fonction pour sortir et rafraichir la page
+    ReloadSharepointPage("Erreur pendant execution du script"); // on se sert de cette fonction pour sortir et rafraichir la page
 
 }
 

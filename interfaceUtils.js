@@ -707,7 +707,7 @@ function onQueryFailed(sender, args) {
     alert(msg);
     console.log(msg);
     // Réactivation du bouton
-    ErrorLogingReloadPage();
+    ReloadSharepointPage();
 }
 
 /**

@@ -138,7 +138,7 @@ function startSync(syncID) {
         // 3 - qui appellera SharePointReloaded une fois la premiere passe de synchro réalisée.
 
         g_iObeyaPlatforms[IOBEYAURL].failedMethods = function () {
-            ErrorLogingReloadPage("from initialisation");
+            ReloadSharepointPage("from initialisation");
         };
         g_iObeyaPlatforms[IOBEYAURL].succesMethods = []; // on utilise un array de fonction ;)
         g_iObeyaPlatforms[IOBEYAURL].succesMethods.push(
@@ -212,14 +212,13 @@ function initiateiObeyaPlateformeMainStruct(syncID) {
  * @param variable
  * @constructor
  */
-function ErrorLogingReloadPage(variable) {
+function ReloadSharepointPage(variable) {
 
     if (g_notificationID)
         g_notificationID.close(SP.UI.DialogResult.OK);
     g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(variable, "La page va se recharger automatiquement", 120, 700);
-    // TODO ou ? SP.UI.Notify.removeNotification(g_notificationID);
     g_lockSync = false;
-    var msg = "Entering ErrorLogingReloadPage (  last sync code )";
+    var msg = "ReloadSharepointPage : ";
     if (variable)
         var msg = msg + variable;
     console.log(msg);
@@ -336,11 +335,11 @@ function syncNotes(iObeyaConnectedPlatform) {
                                 performSyncCRUDs(iObeyaConnectedPlatform);
                             });
                 } else { // cancel
-                    ErrorLogingReloadPage("Annulation de l'utilisateur");
+                    ReloadSharepointPage("Annulation de l'utilisateur");
                 }
             } else {
                 /*alert("\n\n *** IL N'Y A PAS D'ELEMENT A SYNCHRONISER ***  \n\n ");*/
-                ErrorLogingReloadPage("Pas d'éléments à synchroniser");
+                ReloadSharepointPage("Pas d'éléments à synchroniser");
             }
     } catch (e) {
         catchAllThrow(e, iObeyaConnectedPlatform);
@@ -500,7 +499,7 @@ function syncCompleted(iObeyaConnectedPlatform) {
 
     // Rafraîchissement retour à la page
     alert("La synchronisation a été effectuée, statistiques \n\n" + statsMessage);
-    ErrorLogingReloadPage("Synchronisation terminée"); // on se sert de cette fonction pour sortir et rafraichir la page
+    ReloadSharepointPage("Synchronisation terminée"); // on se sert de cette fonction pour sortir et rafraichir la page
 }
 
 // gestion des sémaphores entre threads
@@ -1662,7 +1661,6 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
 
 function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaOverlapping) {
     try {
-        console.log("Mise à jour d'un post-it dans iObeya");
         // Note: les infos d'url/room/board sont déjà placés. dans l'objets iObeyaObj
 
         var iObeyaNodes = iObeyaConnectedPlatform.iObeyaNodes;
@@ -1695,6 +1693,33 @@ function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaO
         var iObeyaStatusObj = findNoteStatus(iObeyaObj, iObeyaNodes); //état courant de la note
 
         iObeyaObj.status = ridaObj.status; // pour un deboggage plus facile
+
+        // Placement de l'objet dans le panneau
+
+        // Analyse predecessor / lien entre card/note
+        var hasChain = false;
+        var hasRidaPredecessor = false;
+        var ridaPredecessorName="", ridaPredecessorId=-1;
+
+        if (!iObeyaObj.hasOwnProperty("overlappingNotesChain"))
+            if (iObeyaObj.overlappingNotesChain.length > 0)
+                hasChain = true;
+
+        if (ridaObj.hasOwnProperty("predecessors")) {
+            if (ridaObj.predecessors.length > 0) { // arrayType, on ne prend que le premier élément
+                hasRidaPredecessor = true;
+                ridaPredecessorName = ridaObj.predecessors[0].value;
+                ridaPredecessorId = ridaObj.predecessors[0].id;
+            }
+
+           if ( ridaObj.predecessors.hasOwnProperty("value"))//object type
+            if (ridaObj.predecessors.value.length) {
+                hasRidaPredecessor = true;
+                ridaPredecessorName = ridaObj.predecessors.value;
+                ridaPredecessorId = ridaObj.predecessors.id;
+            }
+        }
+        console.log("Update Note : " + iObeyaObj['@class'] + " hasChain : " + hasChain + " hasRidaPredecessors : " + hasRidaPredecessor);
 
         if (ridaObj.status !== iObeyaStatusObj.status) {   // status de l'objet a changé    ?
             var roll = findRollbyLabelName(iObeyaConnectedPlatform.iObeyaNodes, ridaObj.status, l_boardid); // le nouveau roll du status
@@ -1970,7 +1995,7 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
         var data = null;
         var cntconcat = 0;
         // Si valeur RIDA est définie, on la traite
-        if (ridaObj[rida_field] !=null || rida_field.constructor === Array) {
+        if (ridaObj[rida_field] != null || rida_field.constructor === Array) {
             // En fonction du type de traitement voulu pour le champ de la note
             switch (type) {
                 // Mapping simple 1 -> 1
@@ -1979,6 +2004,7 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
                     break;
                     // Mapping complexe, * -> 1
                 case "concat":
+                    data = ""; // field type string
                     if (rida_field.constructor === Array) {
                         // Définition de la chaine de séparation des champs
                         var concatString = ":";
@@ -2016,10 +2042,10 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
                     break;
                     // pour la card, il faut pouvoir passer la date en format unix directement	
                 case "datepassthrough":
-                        if (!isNaN(ridaObj[rida_field]))
-                        {
-                            data = ridaObj[rida_field];
-                        }
+                    if (!isNaN(ridaObj[rida_field]))
+                    {
+                        data = ridaObj[rida_field];
+                    }
                     break;
                 case "boolean":
                     if (ridaObj[rida_field] == true || ridaObj[rida_field] == "true" || ridaObj[rida_field] == "1" || ridaObj[rida_field] == 1) {

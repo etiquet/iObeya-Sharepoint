@@ -217,7 +217,7 @@ var SYNC_PROPERTIES_MAP = {
                 'iobeya_parent': 'props',
                 'type': 'numeric',
                 'rida_field': 'resteafaire',
-                'unit': ' J/H (RAF)'
+                'unit': ' J/H(RAF)'
             },
             'endDate': {// dans card iObeya
                 'class': 'com.iobeya.dto.BoardCardDTO',
