@@ -118,7 +118,7 @@ function getNoteLastModificationDate(iObeyaObject, iObeyaNodes) {
 
     // Eléments superposés notes/card ( on parse toute la liste, comme cela toutes les notes liées se voient comme la même date )
     // on tient compte des éléments superposés.
-    
+
     if (upernotes)
         for (var ii in upernotes) {
             upernotes_note = getiObeyaObjectById(iObeyaNodes, upernotes[ii].id);
@@ -152,69 +152,90 @@ function getNoteLastModificationDate(iObeyaObject, iObeyaNodes) {
  */
 
 /**
- * Détermine l'emplacement où doit se trouver l'élément iObeya ainsi que ceux qui le chevauchent
  * @param rollObject
  * @param element
  * @param nodesiObeya
  * @param overLappingElements
  * @returns {*}
  */
-function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
-    var lastZOrder, i;
+
+/*
+ *  * Détermine l'emplacement où doit se trouver l'élément iObeya ainsi que ceux qui le chevauchent
+ *  si le overnote n'est pas null c'est ce qui détermine le positionnement
+ *  sinon c'est le rollObject qui permet de calculer l'emplacement
+ 
+ * @param {type} rollObject
+ * @param {type} element
+ * @param {type} nodesiObeya
+ * @param {type} overLappingElements : les élements par dessus tel que sticker ou label
+ * @param {type} overNote : si la note doit être placée par dessus une autre
+ * @returns {unresolved}
+ */
+
+
+function placeElement(rollObject, note, nodesiObeya, overLappingElements, overNote = null) {
+    var i, limit = null, size = 0, realWidth = 0, X = 0, Y = 0, nextLineY = 0, realHeight = 0, placeFound = false;
+    var lastZOrder = maxZOrder(nodesiObeya) + 1; // on place la note par dessus toutes les autres
 
     try {
         // Initialisation position
-        if (isNaN(element.x))
-            element.x = 0;
-        if (isNaN(element.y))
-            element.y = 0;
-        if (isNaN(element.zOrder))
-            element.zOrder = maxZOrder(nodesiObeya) + 1;
-        // Position Z
-        lastZOrder = maxZOrder(nodesiObeya) + 1;
+        if (isNaN(note.x))
+            note.x = 0;
+        if (isNaN(note.y))
+            note.y = 0;
+        if (isNaN(note.zOrder))
+            note.zOrder = maxZOrder(nodesiObeya) + 1;
 
-        /* TODO: 
-         pb à résoudre : les nouveaux acteurs (dans le cas de refresh actor se placent à droite de tout label trouvés,
-         même si le label le + à droite est situé  dans le roll au dessus  (probablement pas de filtrage en Y )
-         */
+        // si le roll n'est pas null => on prépositionne la zone d'atterissage depuis le Roll
+        size = getElementRealSize(note, overLappingElements); // la taille de la card/note à placer avec ses éléments superposés
+        realWidth = size.realWidth;
+        realHeight = size.realHeight; // dimension de la zone d'atterissage possible
 
-        // Délimitation de la zone
-        var limit = getZoneLimit(rollObject);
+        if (rollObject !== null) {
+            limit = getZoneLimit(rollObject); // les dimensions de la zone d'atterissage
+            X = rollObject.x + NOTE_DEFAULT_MARGIN; // Marge à gauche
+            Y = rollObject.y + NOTE_DEFAULT_MARGIN + limit.YOffset; // Marge au-dessus
+            nextLineY = -1;  // init de ces valeurs
+        }
 
-        // Point de départ
-        var X = rollObject.x + NOTE_DEFAULT_MARGIN; // Marge à gauche
-        var Y = rollObject.y + NOTE_DEFAULT_MARGIN + limit.YOffset; // Marge au-dessus
+        // si le overNote n'est pas null => on prépositionne la zone d'atterissage depuis le overNote
+        // On regarde s'il faut placer la note par dessus une autre note/card ( ou de notes/cards chainées)
+        // On place la nouvelle note à cheval décallé de qques pixels par dessus la note cible
+        // L'utilisateur fera le placement final ( limitation de la portée de l'algorythme de placement)
 
-        var nextLineY = -1;
+        if (overNote !== null) { // placement de la note note/card sur une cible 
+            if (overNote.hasOwnProperty("overlappingNotesChain")) // Si la note cible possède un ensemble de notes chainées, on utilise la position de la dernière note du chainage.
+                if (overNote.overlappingNotesChain.length > 1) { // on saute le dernier éléments qui est la note à placer, au minima il a  2 entrées : la cible et la note à placer.
+                    var idx = overNote.overlappingNotesChain.length - 2;
+                    if (idx < 0)
+                        idx = 0; // defensif
+                    overNote = overNote.overlappingNotesChain[idx]; // les propriétés disponibles ici sont suffisantes pour l'algorithme qui suit ( ce n'est pas une note/card complète)
+                }
 
-        // Détermination de la taille que va occuper le nouveau post-it ainsi que ses éléments superposés
-        var size = getElementRealSize(element, overLappingElements);
-        var realWidth = size.realWidth;
-        var realHeight = size.realHeight;
+            X = overNote.x + 25;
+            Y = overNote.y + 25;
+            placeFound = true; // on indique que le placement est effectué
+        }
 
-        var placeFound = false; // Équivaut à un while(true){...; break; } Un peu sale :D
+        // Ici on place l'élément dans le premier espace disponible, 
+        // algorithme simple, scan horizontal, puis vertical, si plus de place => erreur
+
         while (!placeFound) {
-            // On récupère les éléments qui chevauchent les coordonnées testées
-            var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);
 
-            // on supprime tous les éléments de l'array qui ne sont pas sur le board cible
-            // PWL Parcour de liste avec modification de la liste
-            for (var elmt in elementsInRectangle) {
-                if (elementsInRectangle[elmt].boardid !== element.boardid) {
-                    elementsInRectangle.splice(elmt, 1)
+            var elementsInRectangle = findElementsInRectangle(X, Y, X + realWidth, Y + realHeight, nodesiObeya);  // On récupère les éléments qui chevauchent les coordonnées testées
+
+            for (var elmt in elementsInRectangle) {  // on supprime tous les éléments de l'array qui ne sont pas sur le board cible
+                if (elementsInRectangle[elmt].boardid !== note.boardid) {
+                    elementsInRectangle.splice(elmt, 1) // PWL Parcours de liste avec modification de la liste
                 }
             }
 
-            if (elementsInRectangle.length > 0 && Y + realHeight < limit.Y) {
-                // Si on chevauche des éléments, et qu'on n'est pas en bas du tableau
+            if (elementsInRectangle.length > 0 && Y + realHeight < limit.Y) {  // Si on chevauche des éléments, et qu'on n'est pas en bas du tableau
                 var otherNote = elementsInRectangle[0];
-                // Nouveau X
-                X = otherNote.x + otherNote.width + NOTE_DEFAULT_MARGIN;
-                // Détermination du Y de la prochaine ligne
-                nextLineY = Math.max(nextLineY, Y, otherNote.y + otherNote.height + NOTE_DEFAULT_MARGIN);
+                X = otherNote.x + otherNote.width + NOTE_DEFAULT_MARGIN; // Nouveau X
+                nextLineY = Math.max(nextLineY, Y, otherNote.y + otherNote.height + NOTE_DEFAULT_MARGIN);  // Détermination du Y de la prochaine ligne
 
-                if (X + realWidth >= limit.X) {
-                    // Si la ligne est complète, on passe à la suivante
+                if (X + realWidth >= limit.X) {  // Si la ligne est complète, on passe à la suivante
                     X = rollObject.x + NOTE_DEFAULT_MARGIN;
                     Y = nextLineY;
                     nextLineY = -1
@@ -223,26 +244,27 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
                 // On quitte la boucle, et on place le nouvel élément
                 placeFound = true;
             }
-        }
 
-        // Plus de place sur le rouleau
-        // TODO: traiter différemment le cas d.erreur pour ne pas bloquer la synchro
+            if (Y + realHeight >= limit.Y) {  // Encore de la place sur le rouleau ?
+                alert(`Il n'y a plus de place disponible pour afficher un élément au statut "${note.status}" du panneau "${rollObject.boardname}".`); // TODO: traiter différemment le cas d.erreur pour ne pas bloquer la synchro
+                return null;
+            }
 
-        if (Y + realHeight >= limit.Y) {
-            alert(`Il n'y a plus de place disponible pour afficher un élément au statut "${element.status}" du panneau "${rollObject.boardname}".`);
-            return null;
-        }
+        } // while (!placeFound)
+
 
         // Récupération des marges dues à la position occupée par les éléments qui chevauchent le post-it
-        var delta = getNoteMargin(element, overLappingElements);
+
+        var delta = getNoteMargin(note, overLappingElements);
+
         // Vecteurs des translations effectuées
-        var u = X + delta.xLeft - element.x;
-        var v = Y + delta.yTop - element.y;
+        var u = X + delta.xLeft - note.x;
+        var v = Y + delta.yTop - note.y;
 
         // Translation du post-it
-        element.x += u;
-        element.y += v;
-        element.zOrder = lastZOrder;
+        note.x += u;
+        note.y += v;
+        note.zOrder = lastZOrder;
 
         // Translation des éléments qui le chevauchent
         if (overLappingElements) {
@@ -252,10 +274,10 @@ function placeElement(rollObject, element, nodesiObeya, overLappingElements) {
                 overLappingElements[i].zOrder = lastZOrder + 1;
             }
         }
-        return element;
+        return note;
     } catch (e) {
         throw e;
-    }
+}
 }
 
 /*** Détermine l'emplacement où doit se trouver l'étiquette "Responsable" à la création ***/
@@ -278,7 +300,7 @@ function placeLabel(label, note) {
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "% achevé" à la création ***/
 function placePercentCompleteSticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width / 4;
+    sticker.x = note.x + note.width - sticker.width / 2;
     sticker.y = note.y + note.height / 2 - sticker.height;
     sticker.zOrder = note.zOrder + 2;
     return sticker;
@@ -286,7 +308,7 @@ function placePercentCompleteSticker(sticker, note) {
 
 /*** Détermine l'emplacement où doit se trouver le Sticker "Priority" à la création ***/
 function placePrioritySticker(sticker, note) {
-    sticker.x = note.x + note.width - sticker.width / 4;
+    sticker.x = note.x + note.width - sticker.width / 2;
     sticker.y = note.y + note.height / 2;
     sticker.zOrder = note.zOrder + 3;
     return sticker;

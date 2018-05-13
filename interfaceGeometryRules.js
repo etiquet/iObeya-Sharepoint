@@ -31,8 +31,6 @@ function between(min, p, max) {
     return result;
 }
 
-
-
 /*** Vérifie si des éléments (tous sauf rouleaux) chevauchent le rectangle (x1, y1, x2, y2) ***/
 function findElementsInRectangle(x1, y1, x2, y2, iObeyaNodes) {
     return findNodesInRectangle(x1, y1, x2, y2, iObeyaNodes, isNotRoll);
@@ -45,8 +43,18 @@ function findActorsInRectangle(x1, y1, x2, y2, iObeyaNodes) {
 
 /*** Retourne tous les éléments qui sont au dessus du post-it ***/
 function findOverlappingElements(note, iObeyaNodes) {
-    var foundElements = findNodesInRectangle(note.x, note.y, note.x + note.width, note.y + note.height, iObeyaNodes, isNotNote);
+
     var overLappingElements = Array();
+
+
+    if (note === undefined)  // code défensif  
+        return overLappingElements;
+    if (note === null)  // code défensif  
+        return overLappingElements;
+    if (!note.hasOwnProperty("x"))  // code défensif
+        return overLappingElements;
+
+    var foundElements = findNodesInRectangle(note.x, note.y, note.x + note.width, note.y + note.height, iObeyaNodes, isNotNote);
 
     // Ne conserver que les éléments situés "au-dessus" du post-it
     // Vérifier sur les elements sont bien dans le même tableau que la note

@@ -609,7 +609,7 @@ function createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaId, iObeyaNote, 
         error = +getLabelProperties(oListItem, iObeyaLabel);
         error = +getPercentCompleteStickerProperties(oListItem, iObeyaPercentCompleteSticker);
         error = +getPriorityStickerProperties(oListItem, iObeyaPrioritySticker);
-        var hasprecedessor = getNotePredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote); // on ne place pas le prédécesseur car il faut avoir l'id des items en mémoire pour travailler
+        var hasprecedessor = getNotePredecessor(iObeyaConnectedPlatform.ridaNodes, oListItem, iObeyaNote); 
 
         // Date de modification
         var modifdate = getNoteLastModificationDate(iObeyaNote, iObeyaConnectedPlatform.iObeyaNodes);
@@ -697,35 +697,37 @@ function getNotePredecessor(nodesRida, oListItem, iObeyaNote) {
     var statusObject;
     var haspredecessor = false;
     try {
-        if (iObeyaNote.hasOwnProperty("overlappingNotesChain")) {
+        if (iObeyaNote.hasOwnProperty("overlappingNotesChain")) 
+            if (iObeyaNote.overlappingNotesChain !== null){
 
             // on loop dans l'array pour trouver le prédécesseur
             var l_precedessor;
+            
+                for (var ii = 0; ii < iObeyaNote.overlappingNotesChain.length; ii++) { // on loop dans l'array
 
-            for (var ii = 0; ii < iObeyaNote.overlappingNotesChain.length; ii++) { // on loop dans l'array
+                    if (iObeyaNote.overlappingNotesChain[ii].id === iObeyaNote.id) { // on s'arrête de boucler quand on tombe sur le noeud lui-même
+                        if (SHAREPOINTLIST_MATCHINGNAME.hasOwnProperty("predecessors")) {
+                            var predecessor = {};
+                            var predecessor_array = [];
 
-                if (iObeyaNote.overlappingNotesChain[ii].id === iObeyaNote.id) { // on s'arrête de boucler quand on tombe sur le noeud lui-même
-                    if (SHAREPOINTLIST_MATCHINGNAME.hasOwnProperty("predecessors")) {
-                        var predecessor = {};
-                        var predecessor_array = [];
+                            if (l_precedessor != null)
+                                if (l_precedessor.hasOwnProperty("id")) {
+                                    var predecessorId = getRidaObjectByiObeyaId(nodesRida, l_precedessor.id).idRida;
+                                    var newLookupField = new SP.FieldLookupValue();
+                                    newLookupField.set_lookupId(predecessorId);
+                                    if (predecessorId > 0) // a-t-on trouver le prédecesseur dans la mémoire ?
+                                        oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], newLookupField);
+                                    haspredecessor = true;
+                                }
 
-                        if (l_precedessor != null)
-                            if (l_precedessor.hasOwnProperty("id")) {
-                                var predecessorId = getRidaObjectByiObeyaId(nodesRida, l_precedessor.id).idRida;
-                                var newLookupField = new SP.FieldLookupValue();
-                                newLookupField.set_lookupId(predecessorId);
-                                if (predecessorId > 0) // a-t-on trouver le prédecesseur dans la mémoire ?
-                                    oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], newLookupField);
-                                haspredecessor = true;
-                            }
+                            return haspredecessor; // on sort (on ne gère qu'un prececesseur )
+                        }
 
-                        return haspredecessor; // on sort (on ne gère qu'un prececesseur )
-                    }
-
-                } else
-                    l_precedessor = iObeyaNote.overlappingNotesChain[ii]; // on boucle
-            }
+                    } else
+                        l_precedessor = iObeyaNote.overlappingNotesChain[ii]; // on boucle
+                }
         }
+    
         // pas de precedesseur => on vide la colonne
         oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME["predecessors"], null);
         return haspredecessor;
@@ -1003,7 +1005,7 @@ function mapIObeyaToRida(oListItem, iObeyaNote) {
 
                     // pour la card, il faut pouvoir passer la date en format unix directement	
                 case "datepassthrough":
-                    if (! isNaN(data) )
+                    if (!isNaN(data))
                         if (data > 0)
                             oListItem.set_item(SHAREPOINTLIST_MATCHINGNAME[rida_field], new Date(data));
                     break;

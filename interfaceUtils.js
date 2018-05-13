@@ -390,12 +390,16 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
                                     if (l_underlappingNotes.length > 0) {
 
                                         // On place le noeud "racine" en premier dans la liste
-
                                         var l_list = [];
                                         l_list.id = iObeyaConnectedPlatform.iObeyaNodes[idw].id; // l'id iObeya
                                         l_list.listId = 0; // l'id dans la liste
                                         l_list.props = iObeyaConnectedPlatform.iObeyaNodes[idw].props; // pas indispensable, juste facillitant pour le debug
                                         l_list.zOrder = iObeyaConnectedPlatform.iObeyaNodes[idw].zOrder;  // pas indispensable, juste facillitant pour les algorythmes
+                                        l_list.x = iObeyaConnectedPlatform.iObeyaNodes[idw].x;  // pas indispensable, juste facillitant pour les algorythmes
+                                        l_list.y = iObeyaConnectedPlatform.iObeyaNodes[idw].y;  // pas indispensable, juste facillitant pour les algorythmes
+                                        l_list.width = iObeyaConnectedPlatform.iObeyaNodes[idw].width;  // pas indispensable, juste facillitant pour les algorythmes
+                                        l_list.height = iObeyaConnectedPlatform.iObeyaNodes[idw].height;  // pas indispensable, juste facillitant pour les algorythmes
+
                                         chainedlist.push(l_list); // on ajoute le noeud à l'array
 
                                         for (var idx = 1; idx <= l_underlappingNotes.length; idx++) {  // on créé un array du chainage
@@ -404,6 +408,11 @@ function getNodes(iObeyaConnectedPlatform, boardid, boardname) {
                                             l_list.listId = idx; // l'id dans la liste
                                             l_list.props = l_underlappingNotes[idx - 1].props; // pas indispensable, juste facillitant pour le debug
                                             l_list.zOrder = l_underlappingNotes[idx - 1].zOrder;  // pas indispensable, juste facillitant pour les algorythmes
+                                            l_list.x = l_underlappingNotes[idx - 1].x;  // pas indispensable, juste facillitant pour les algorythmes
+                                            l_list.y = l_underlappingNotes[idx - 1].y;  // pas indispensable, juste facillitant pour les algorythmes
+                                            l_list.width = l_underlappingNotes[idx - 1].width;  // pas indispensable, juste facillitant pour les algorythmes
+                                            l_list.height = l_underlappingNotes[idx - 1].height;  // pas indispensable, juste facillitant pour les algorythmes
+
                                             chainedlist.push(l_list); // on ajoute le noeud à l'array
                                             chainedlist.sort(function (obj1, obj2) {
                                                 return parseInt(obj1.zOrder) - parseInt(obj2.zOrder);

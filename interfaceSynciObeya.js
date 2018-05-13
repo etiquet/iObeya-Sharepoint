@@ -298,22 +298,22 @@ function syncNotes(iObeyaConnectedPlatform) {
                 // on affiche un dialogue à l'utilisateur pour demander sa confirmation pour lancer la Synchro.
 
                 var stats = getStats(l_synclist);
-                var statsMessage = "- Sens Rida > iObeya : \n\n"
-                        + stats[syncType.todo_createiObeya] + " Note(s) à créer\n"
+                var statsMessage = "- Sens Rida > iObeya : \n"
+                        + stats[syncType.todo_createiObeya] + " Note(s) à créer , "
                         + stats[syncType.todo_synciObeya] + " Note(s) à synchroniser\n"
-                        + stats[syncType.todo_removeiObeya] + " Note(s) à placer à la corbeille\n"
+                        + stats[syncType.todo_removeiObeya] + " Note(s) à placer à la corbeille, "
                         + stats[syncType.todo_moveBoardiObeya] + " Note(s) à changer de panneau\n\n"
-                        + "- Sens iObeya > Rida : \n\n"
-                        + stats[syncType.todo_createRida] + " Tâche(s) à créer\n"
+                        + "- Sens iObeya > Rida : \n"
+                        + stats[syncType.todo_createRida] + " Tâche(s) à créer, "
                         + stats[syncType.todo_syncRida] + " Tâche(s) à synchroniser\n"
                         + stats[syncType.todo_removeRida] + " Tâche(s) à désactiver\n\n"
-                        + "- Sens iObeya > iObeya : \n\n"
+                        + "- Sens iObeya > iObeya : \n"
                         + stats[syncType.todo_cloneiObeya] + " Tâche(s) à cloner\n";
-                if (confirm("Vous avez demandé une synchronisation entre la liste Sharepoint courante et les panneaux iObeya suivants :  \n\n"
+                if (confirm("Vous avez demandé une synchronisation avec les panneaux iObeya suivants : "
                         + BOARDSTOSYNC
                         + ".\n\n"
                         + statsMessage
-                        + " \n\nSouhaitez-vous continuer ?\n\n"
+                        + "\nSouhaitez-vous continuer ?\n"
                         + "(Liste de paramètres utilisée : "
                         + iObeyaConnectedPlatform.syncID
                         + ")")) { // confirmation de l'utilisateur
@@ -558,7 +558,6 @@ function SharePointReloaded(iObeyaConnectedPlatform) {
 
                         // on place l'id rida dans l'objet
                         var ridaObject = getRidaObjectByiObeyaId(iObeyaConnectedPlatform.ridaNodes, iObeyaConnectedPlatform.synclist[iii].idiObeya);
-
                         if (ridaObject) // on place l'id rida dans l'objet ( ce qui n'était pas dispo à la création )
                             iObeyaConnectedPlatform.synclist[iii].idRida = ridaObject.idRida;
                         else
@@ -573,9 +572,7 @@ function SharePointReloaded(iObeyaConnectedPlatform) {
                     g_notificationID.close(SP.UI.DialogResult.OK);
                 var Msg = g_versionscript + "Execution du post traitement #step2";
                 g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
-
                 prepareSyncElements(iObeyaConnectedPlatform);
-
                 // Step #3  on (re) lance le commit sharepoint ( asynchrone )
                 console.log("Déclenchement du Commit SharePoint #step2");
                 iObeyaConnectedPlatform.clientContext.executeQueryAsync(Function.createDelegate(this, function () {
@@ -600,7 +597,6 @@ function SharePointecondCommitQuerySucceeded(iObeyaConnectedPlatform) {
         g_notificationID.close(SP.UI.DialogResult.OK);
     var Msg = g_versionscript + "Fin du Commit#2 SharePoint mise à jour post creation ";
     g_notificationID = SP.UI.ModalDialog.showWaitScreenWithNoClose(varTitle, Msg, 120, 700);
-
     // Post traitement fini => fin de la synchronisation.
     iObeyaConnectedPlatform.SharepointToCommit = 0; // flag pour la logique timerfunction
 }
@@ -880,8 +876,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
 
                 // Le noeud iObeya existe. On compare maintenant les date de modif.
                 // Attention dans iObeya il faut regarder l'ensemble des elements note + objets superposés.
-                // TODO : il faut tenir compte s'il y a des notes cascadées/liées.
-                // on convertit en nombre
+                // y compris si la note est chainée avec d'autres notes => implique que toutes les notes liées sont traitées en bloc
 
                 var noteModificationDate = getNoteLastModificationDate(iObeyaObject, iObeyaNodes);
                 // Bloc de code commenté car il suffit de boucler sur l'une des liste (dans ce cas, celle d'iObeya) pour que l'autre se mette à jour (après synchronisation).
@@ -962,6 +957,7 @@ function compareforSyncAction(iObeyaConnectedPlatform) {
                     if ((ridaObject.modificationDate) > noteModificationDate) {
                         console.log("ridaObject.modificationDate > noteModificationDate :" + ((ridaObject.modificationDate) > noteModificationDate));
                         // Rida plus récent > Cas n°3 : mise à jour iObeya
+                        // note : avec l'algorythme de gestion de date si une note fait parti d'une chaine liste, toutes les notes liées sont rafraichies
                         l_synclist = addSyncObject(l_synclist, syncType.todo_synciObeya, ridaObject.idRida, iObeyaObject.id, status_todo);
                         l_synclist[l_synclist.length - 1].duedateupdated = duedateupdated;
                         // note : l'entrée Rida sera mise à jour après l'update iObeya automatiquement.
@@ -1132,12 +1128,37 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                 case syncType.todo_synciObeya :
                     l_iObObjt = updateNoteIniObeya(iObeyaConnectedPlatform, ridaObject, iObeyaObject, iObeyaOverlapping);
                     iObeyaConnectedPlatform.nodesToUpdate = iObeyaConnectedPlatform.nodesToUpdate.concat(l_iObObjt);
-                    if (STATUS_SYNC == null)
+
+                    if (STATUS_SYNC === null)
                         STATUS_SYNC = "S";
-                    createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, l_iObObjt[0], STATUS_SYNC + ">iO"); // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
+
+                    // mise à jour du/des Rida associé(s)
+                    var loop_update_flag = false;
+
+                    if (iObeyaObject.hasOwnProperty("overlappingNotesChain")) // une liste chainée ?
+                        if (iObeyaObject.overlappingNotesChain.length > 0)
+                            loop_update_flag = true;
+
+                    if (loop_update_flag) { // il y a une liste chainée non vide
+                        for (var iiiii in iObeyaObject.overlappingNotesChain) {
+                            var l_idrida = getRidaObjectByiObeyaId(iObeyaConnectedPlatform.ridaNodes, iObeyaObject.overlappingNotesChain[iiiii].id); // on récupère l'object rida qui correspond à cette entrée
+                            var l_iObyObj = getiObeyaObjectById(iObeyaConnectedPlatform.iObeyaNodes, iObeyaObject.overlappingNotesChain[iiiii].id);
+                            if (l_idrida && l_iObyObj) {
+                                createCAMLupdateRidaEntry(iObeyaConnectedPlatform, l_idrida.idRida, l_iObyObj, STATUS_SYNC + ">iO(m)"); // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )
+                            }
+                        }
+
+                    } else {// pas de liste chainée on update simplement la note en cours
+                        createCAMLupdateRidaEntry(iObeyaConnectedPlatform, ridaObject.idRida, iObeyaObject, STATUS_SYNC + ">iO"); // on met à jour l'entrée "RIDA" avec les informations de la note créée ( ex: id, date, modif, creator )                                      
+                    }
+
                     syncObject.status = status_done;
-                    // on enrichie la synclist
-                    enrichSyncInfoFromiObeyaObject(l_iObObjt[0], iObeyaConnectedPlatform.iObeyaNodes, l_syncList[idSync]);
+                    if (iObeyaObject.toreupdate != undefined) { // on force le reupdate ?
+                        iObeyaConnectedPlatform.nodesToUpdate.push(iObeyaObject);
+                    }
+                    
+                    enrichSyncInfoFromiObeyaObject(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes, l_syncList[idSync]);    // on enrichie la synclist
+
                     break;
                 case syncType.todo_createRida :
                     // Si c'est une note clonée alors on ne la crée pas côté SP
@@ -1465,13 +1486,35 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
     // Récupérer tous les éléments qui chevauchent le post-it
     // on crée les autres éléments dont on a besoin
     var overlappingElements = findOverlappingElements(newNote, iObeyaConnectedPlatform.iObeyaNodes);
-    newNote = placeElement(roll, newNote, iObeyaConnectedPlatform.iObeyaNodes, overlappingElements);
-    // Si l'élement n'est pas placé (rouleau saturé)
+    var targetPlaceObject = null;
+    var ridaPredecessorName = "", ridaPredecessorId = -1;
+// regarde si la note à un prédecesseur, si oui on place cette note sur la cible
+    if (ridaObj.hasOwnProperty("predecessors")) {
+        if (ridaObj.predecessors.length > 0) { // arrayType, on ne prend que le premier élément
+            ridaPredecessorName = ridaObj.predecessors[0].value;
+            ridaPredecessorId = ridaObj.predecessors[0].id;
+        }
+
+        if (ridaObj.predecessors.hasOwnProperty("id")) {//object type
+            ridaPredecessorName = ridaObj.predecessors.value;
+            ridaPredecessorId = ridaObj.predecessors.id;
+        }
+
+// TODO : il faut ajouter le chainage... dans les attributs de la note. à suivre
+
+        targetPlaceObject = getiObeyaObjectById(iObeyaConnectedPlatform, ridaPredecessorId);
+        if (targetPlaceObject === null) { // si la note cible n'existe pas (encore), on force le reupdate pour que cela soit traité dans une seconde passe
+            newNote.toreupdate = true;
+        }
+    }
+
+    newNote = placeElement(roll, newNote, iObeyaConnectedPlatform.iObeyaNodes, overlappingElements, targetPlaceObject);
+    // Si l'élement n'est pas placé (ex: rouleau saturé)
     if (newNote === null) {
         return null;
     }
 
-    //ajoute l'objet dans la liste en mémoire pour pouvoir calculer correctement le placement des objets suivants
+//ajoute l'objet dans la liste en mémoire pour pouvoir calculer correctement le placement des objets suivants
     iObeyaConnectedPlatform.iObeyaNodes.push(newNote);
     // Etiquette du responsable
     var newLabel = null;
@@ -1483,7 +1526,7 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
                 iObeyaConnectedPlatform.iObeyaNodes.push(newLabel);
             }
 
-    // Sticker pourcentage achevé
+// Sticker pourcentage achevé
     var newPercentage = null;
     if (ridaObj.percentComplete != null
             && PERCENTAGE_IOBEYASTICKER_MAPPING.map[ridaObj.percentComplete] != null) {
@@ -1492,7 +1535,7 @@ function createNoteFromRida(newNote, iObeyaConnectedPlatform, ridaObj) {
         iObeyaConnectedPlatform.iObeyaNodes.push(newPercentage);
     }
 
-    // Sticker priorité
+// Sticker priorité
     var newPriority = null;
     if (ridaObj.priority != null
             && PRIORITY_IOBEYASTICKER_MAPPING.map[ridaObj.priority] != null) {
@@ -1549,14 +1592,13 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
         newNote.props.label2 = iObeyaNodeToClone.props.label2;
         newNote.props.label3 = iObeyaNodeToClone.props.label3;
         newNote.props.layoutId = iObeyaNodeToClone.props.layoutId;
-
         /* comment out pas compatible avec >=v3.6. newNote.props.title = iObeyaNodeToClone.props.title; // due date
          newNote.props.responsible = iObeyaNodeToClone.props.responsible; // target date
          newNote.props.date = iObeyaNodeToClone.props.date; // undisplayed label "workload".
          newNote.props.workload = iObeyaNodeToClone.props.workload;*/
     }
 
-    //pour la card
+//pour la card
     if (iObeyaNodeToClone['@class'] === "com.iobeya.dto.BoardCardDTO") {
         newNote.assignees = iObeyaNodeToClone.assignees;
         newNote.checklist = iObeyaNodeToClone.checklist;
@@ -1568,15 +1610,15 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
         newNote.props.priority = iObeyaNodeToClone.props.priority;
     }
 
-    // on récupère les informations depuis l'escallation sticker (si pas présent on ne fait rien)
-    // idéalement ce travail devrait être fait en amont de cet appel
+// on récupère les informations depuis l'escallation sticker (si pas présent on ne fait rien)
+// idéalement ce travail devrait être fait en amont de cet appel
     var iObeyaOverlapping = findOverlappingElements(iObeyaNodeToClone, iObeyaConnectedPlatform.iObeyaNodes);
     var escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
     if (escallationSticker === undefined || escallationSticker === null) {
         console.log(" createClonedNote : le sticker d'escallade n'est pas présent");
         return null; // on n'a pas d'infos pour faire l'escallade, on sort...
     }
-    //  valeurs obligatoires
+//  valeurs obligatoires
     var l_targetrollname = ESCALLATION_MAPPING.map[escallationSticker.name].target_dropZone; // Zone d'atterrissage cible
     l_targetrollname = (l_targetrollname == undefined || l_targetrollname == null) ? DROP_ZONE : l_targetrollname; // pour eviter une erreur si pb de conf
     var l_target_boardname = ESCALLATION_MAPPING.map[escallationSticker.name].target_board; // l'id de la board (pas celui du container )    // on récupère le nom de la board cible. ( elle peut être en dehors des boards ou room gérés)
@@ -1597,7 +1639,7 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
             break;
         }
 
-    // si l'on n'a pas trouvé la room cible on sort
+// si l'on n'a pas trouvé la room cible on sort
     if (l_target_roomid == null) {
         console.log(" createClonedNote : la room n'existe pas dans la plateforme target");
         return null; // on n'a pas d'infos pour faire l'escallade, on sort...
@@ -1660,18 +1702,20 @@ function createClonedNote(newNote, iObeyaConnectedPlatform, iObeyaNodeToClone) {
  */
 
 function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaOverlapping) {
+    var elementsToUpdate = [];
+
     try {
-        // Note: les infos d'url/room/board sont déjà placés. dans l'objets iObeyaObj
+// Note: les infos d'url/room/board sont déjà placés. dans l'objets iObeyaObj
 
         var iObeyaNodes = iObeyaConnectedPlatform.iObeyaNodes;
         // on récupère le panneau depuis le RIDA (/!\ il peut avoir changé)
-        var l_boardid = getBoardidFromRidaObj(iObeyaConnectedPlatform, ridaObj); //
+        var l_boardid = getBoardidFromRidaObj(iObeyaConnectedPlatform, ridaObj);
+
         // Mise à jour des champs de la NOTE
         // On met à jour le contenu de la note ( par les attributs ex: container, etc...)
-
         iObeyaObj['@class'] = "com.iobeya.dto.BoardNoteDTO";
-        if ((ridaObj.description || ridaObj.details)) {
 
+        if ((ridaObj.description || ridaObj.details)) { // on positionne la bonne class selon le 
             if (ridaObj.description)
                 if (ridaObj.description.length)
                     iObeyaObj['@class'] = "com.iobeya.dto.BoardCardDTO";
@@ -1680,62 +1724,218 @@ function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaO
                     iObeyaObj['@class'] = "com.iobeya.dto.BoardCardDTO";
         }
 
+        // mise à jour de la note et des éléments superposés
         var note = fillNoteForiObeya(iObeyaObj, ridaObj);
-        //
-        // Mise à jour (en mémoire) des éléments au dessus de la note : pourcentage, priorite, acteurs
-        // iObeyaOverlapping est un array() créé via findOverlappingElements( ); créée dans la fonction précédente
         var label = manageLabelUpdate(iObeyaConnectedPlatform, ridaObj, note, iObeyaOverlapping);
         var percentSticker = managePercentCompleteStickerUpdate(iObeyaConnectedPlatform, ridaObj, note, iObeyaOverlapping);
         var prioritySticker = managePriorityStickerUpdate(iObeyaConnectedPlatform, ridaObj, note, iObeyaOverlapping);
+
         // Il est possible à ce stade que des nouveaux éléments supperposés aient été créés, il faut revérifier la liste
         iObeyaOverlapping = findOverlappingElements(iObeyaObj, iObeyaNodes);
-        // On gère s'il y a changement de status RIDA (donc de roll) et on modifie la position de la  note dans le kanban.
-        var iObeyaStatusObj = findNoteStatus(iObeyaObj, iObeyaNodes); //état courant de la note
+        var iObeyaStatusObj = findNoteStatus(iObeyaObj, iObeyaNodes); // récupère le statut de la note/card
+        iObeyaObj.status = ridaObj.status; // statut cible depuis le Rida, pour un deboggage plus facile
 
-        iObeyaObj.status = ridaObj.status; // pour un deboggage plus facile
+        // Placement de l'objet dans le panneau. analyse si predecessor(seur)  / liend entre cards/notes
+        var ridaPredecessosIsInChain = false;
+        var ridaPredecessorId = getRidaPredecessorId(ridaObj); // on récupère l'id du prédécesseur dans le rida, si existant
 
-        // Placement de l'objet dans le panneau
+        if (iObeyaObj.hasOwnProperty("overlappingNotesChain")) // on calcule un flag pour la logique qui suit
+            if (iObeyaObj.overlappingNotesChain.length > 0) {
 
-        // Analyse predecessor / lien entre card/note
-        var hasChain = false;
-        var hasRidaPredecessor = false;
-        var ridaPredecessorName="", ridaPredecessorId=-1;
-
-        if (!iObeyaObj.hasOwnProperty("overlappingNotesChain"))
-            if (iObeyaObj.overlappingNotesChain.length > 0)
-                hasChain = true;
-
-        if (ridaObj.hasOwnProperty("predecessors")) {
-            if (ridaObj.predecessors.length > 0) { // arrayType, on ne prend que le premier élément
-                hasRidaPredecessor = true;
-                ridaPredecessorName = ridaObj.predecessors[0].value;
-                ridaPredecessorId = ridaObj.predecessors[0].id;
+                for (var iiiii in iObeyaObj.overlappingNotesChain) {  // maintenant on regarde si la note/card qui correspond au ridaPredecessorId est dans la chaine
+                    var l_ridaObj = getRidaObjectByiObeyaId(iObeyaConnectedPlatform.ridaNodes, iObeyaObj.overlappingNotesChain[iiiii].id); // on récupère l'id de la note/card
+                    if ((ridaPredecessorId > 0) && l_ridaObj)
+                        if (ridaPredecessorId === l_ridaObj.idRida) { // le précédesseur est dans la chain -> np op.
+                            ridaPredecessosIsInChain = true;
+                            break;
+                        }
+                }
             }
 
-           if ( ridaObj.predecessors.hasOwnProperty("value"))//object type
-            if (ridaObj.predecessors.value.length) {
-                hasRidaPredecessor = true;
-                ridaPredecessorName = ridaObj.predecessors.value;
-                ridaPredecessorId = ridaObj.predecessors.id;
-            }
-        }
-        console.log("Update Note : " + iObeyaObj['@class'] + " hasChain : " + hasChain + " hasRidaPredecessors : " + hasRidaPredecessor);
+        console.log("Update Note : " + iObeyaObj['@class'] + " hasChain : " + ridaPredecessosIsInChain + " ridaPredecessorId : " + ridaPredecessorId);
 
-        if (ridaObj.status !== iObeyaStatusObj.status) {   // status de l'objet a changé    ?
+        if (ridaObj.status !== iObeyaStatusObj.status || // changement de statut 
+                ridaPredecessosIsInChain && (ridaPredecessorId === 0)) { // ou bien la note n'a pas/plus de predecessor > update placement de la note
+
+            if (iObeyaObj.hasOwnProperty("overlappingNotesChain"))
+                if (iObeyaObj.overlappingNotesChain !== null) { // il y a une liste => suppression
+
+                    var chainedlist = iObeyaObj.overlappingNotesChain; // copie locale
+                    var toReupdate = false;
+
+                    // Ajustement de la liste, suppression de la note dans la chained liste
+                    for (var iii = 0; iii < chainedlist.length; iii++) {
+                        if (chainedlist[iii].id === iObeyaObj.id) { //noeud à supprimer ?
+                            chainedlist.splice(iii, 1); // suppression du noeud
+                            toReupdate = true; // pour indique que la suite de la liste doit être repositionnée/dedessinée
+                        }
+                        chainedlist[iii].toReupdate = toReupdate; // on indique qu'il faut faire un réupdate aux notes ensuites
+                    }
+
+                    iObeyaObj.overlappingNotesChain = []; // on vide la liste chainée de la note pour indiquer que la note/card n'est plus chainée   
+
+                    // on place la nouvelle liste dans l'ensemble des autres notes/cards et les repositionne
+                    for (var iidx in chainedlist) {
+                        var l_idx = chainedlist[iidx].id;
+                        var l_idx2 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, l_idx);
+                        iObeyaConnectedPlatform.iObeyaNodes[l_idx2].overlappingNotesChain = chainedlist; // on place la (même) liste dans les notes/cards chainées
+
+                        if (chainedlist[iidx].toReupdate // repositionnement de la note  ? (toutes les notes/card après celle supprimée)
+                                && l_idx2 > 0) { // code défensif
+                            var iObeyaOverlapping2 = findOverlappingElements(iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes); // on récupère les stickers/labels par dessus
+                            var elmtToUpdate = placeElement(null/*pas de roll*/, iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes, iObeyaOverlapping2, iObeyaConnectedPlatform.iObeyaNodes[l_idx2 - 1]);
+                            elementsToUpdate.push(elmtToUpdate); // on ajoute la note à la liste des "elementsToUpdate" (l'update des objets iObeya est traité en fin de processus de synchro)
+                            elementsToUpdate = elementsToUpdate.concat(iObeyaOverlapping2); // on ajoute les éléments supperposés
+                        }
+                    }
+                }//if (iObeyaObj.overlappingNotesChain !== null) { // il y a une liste => suppression
+
+            // on place la note/card
             var roll = findRollbyLabelName(iObeyaConnectedPlatform.iObeyaNodes, ridaObj.status, l_boardid); // le nouveau roll du status
-            // Récupérer tous les éléments qui chevauchent le post-it
-            note = placeElement(roll, note, iObeyaNodes, iObeyaOverlapping);
-        }
+            note = placeElement(roll, note, iObeyaNodes, iObeyaOverlapping, null/*pas de cible de positionnement*/); // on place tous les éléments
+            elementsToUpdate.push(note); // on ajoute la note à la liste des "elementsToUpdate" (l'update des objets iObeya est traité en fin de processus de synchro)
+            elementsToUpdate = elementsToUpdate.concat(iObeyaOverlapping); // on ajoute les éléments supperposés
+        } // if (ridaObj.status !== iObeyaStatusObj.status ||
 
-        // Creation de l'arrayUpdate
-        var elementsToUpdate = [];
-        elementsToUpdate.push(note); // on ajoute la note à la liste des "elementsToUpdate" (l'update des objets iObeya est traité en fin de processus de synchro)
-        elementsToUpdate = elementsToUpdate.concat(iObeyaOverlapping); // on ajoute les éléments supperposés
+        if (ridaPredecessorId > 0 && !ridaPredecessosIsInChain) {  // la note n'est pas géométriquement liée à une autre card/note correspondant au ridapredecessor et doit l'être
+            var ridaTargetObject = getRidaObjectByRidaId(iObeyaConnectedPlatform.ridaNodes, ridaPredecessorId); // récupération de la note cible
+            elementsToUpdate = placeChainedListInNoteCard(iObeyaConnectedPlatform, iObeyaObj, ridaObj, ridaTargetObject, elementsToUpdate); // on effectue le calcul du placement +  liste chainée entre note
+        }// if (hasRidaPredecessor && !hasChain) {  // la note n'est pas géométriquement liée à une autre card/note et doit l'être
 
         return elementsToUpdate;
     } catch (e) {
         throw e;
     }
+}
+
+/*
+ *  renvoi s'il exite l'id du prédécesseur ( s'il y en a plusieurs on ne renvoit que le premier )
+ *   retour = 0 si erreur
+ 
+ * @param {type} ridaObj
+ * @returns {Number} */
+
+function getRidaPredecessorId(ridaObj) {
+    var ridaPredecessorName = "", ridaPredecessorId = 0;
+
+
+    if (ridaObj.hasOwnProperty("predecessors")) {
+
+        if (ridaObj.predecessors.length > 0) { // arrayType, on ne prend que le premier élément
+            ridaPredecessorName = ridaObj.predecessors[0].value;
+            ridaPredecessorId = ridaObj.predecessors[0].id;
+        }
+
+        if (ridaObj.predecessors.hasOwnProperty("id")) {//object type, on récupère la valeur
+            ridaPredecessorName = ridaObj.predecessors.value;
+            ridaPredecessorId = ridaObj.predecessors.id;
+        }
+
+    }
+
+    return ridaPredecessorId;
+}
+
+
+/*
+ * 
+ * Function qui permet de :
+ *   1 - de gérer la liste chainée entre notes/cards
+ *   2 - retourner la position cible du positionnement de la card
+ * 
+ * @param {type} iObeyaConnectedPlatform
+ * @param {type} iObeyaObj
+ * @param {type} ridaObj
+ * @param {type} ridaTargetObject
+ * @returns {placeChainedListInNoteCard.targetPlaceObject|getiObeyaObjectById.iObeyaNodes} 
+ * */
+
+function placeChainedListInNoteCard(iObeyaConnectedPlatform, iObeyaObj, ridaObj, ridaTargetObject, elementsToUpdate) {
+    var chainedlist;
+    var targetPlaceObject;
+
+    if (ridaTargetObject) // code défensif
+        if (ridaTargetObject.idiObeya) { // l'objet cible existe on peut programmer le placement de la cible, sinon prblm on retourne null
+
+            targetPlaceObject = getiObeyaObjectById(iObeyaConnectedPlatform.iObeyaNodes, ridaTargetObject.idiObeya); // on récupère la note/card iObeya
+
+            if (targetPlaceObject === null) {  // si la note cible n'existe pas (encore), on force le reupdate pour que cela soit traité dans une seconde passe, mais problème...
+                // on ajoute ici le minimum vital c'est à dire l'id de la cible cela est suffisant pour la logique de la fonction : getNotePredecessor(nodesRida, oListItem, iObeyaNote) {
+                // qui servira ensuite pour createCAMLupdateRidaEntry ( une fois la note créé > l'entrée du rida est mise à jour )
+                chainedlist = [];
+                var l_list = [];
+                l_list.id = ridaTargetObject.idiObeya; // l'id iObeya cible
+                l_list.listId = 0; // l'id dans la liste
+                chainedlist.push(l_list); // on ajoute le noeud à l'array
+
+            } else { // la cible existe
+
+                if (!targetPlaceObject.hasOwnProperty("overlappingNotesChain")) // on vérifie que la card/note cible dispose d'une liste overlappingNotesChain
+                    targetPlaceObject.overlappingNotesChain = []; // non on l'initialise
+
+                chainedlist = targetPlaceObject.overlappingNotesChain; // on dispose ici de la list chainée en état initial
+
+                if (chainedlist.length === 0) { // si elle est vide on commence par ajouter la note/card "cible" en premier
+                    var l_list = [];
+                    l_list.id = targetPlaceObject.id; // l'id iObeya
+                    l_list.listId = 0; // l'id dans la liste
+                    l_list.props = targetPlaceObject.props; // pas indispensable, juste facillitant pour le debug
+                    l_list.zOrder = targetPlaceObject.zOrder; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.x = targetPlaceObject.x; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.y = targetPlaceObject.y; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.width = targetPlaceObject.width; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.height = targetPlaceObject.height; // pas indispensable, juste facillitant pour les algorythmes
+                    chainedlist.push(l_list); // on ajoute le noeud à l'array
+                }
+            }// else: if (targetPlaceObject) {
+
+            // à cet endroit une liste existe. on loop dans cette liste pour insérer la nouvelle note dans la chaine
+            var toReupdateFlag = false;
+
+            for (var iii = 0; iii < chainedlist.length; iii++) {
+
+                chainedlist[iii].toReupdate = toReupdateFlag; // on indique qu'il faut faire un réupdate de la note/cards et des suivantes
+                if (toReupdateFlag)
+                    chainedlist[iii].listId = iii;// il faut renuméroter la liste
+
+                if (chainedlist[iii].id === targetPlaceObject.id) {
+                    var l_list = [];
+                    l_list.id = iObeyaObj.id; // l'id iObeya
+                    l_list.listId = iii;// l'id dans la liste, sera +1 au prochain
+                    l_list.props = iObeyaObj.props; // pas indispensable, juste facillitant pour le debug
+                    l_list.zOrder = iObeyaObj.zOrder; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.x = iObeyaObj.x; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.y = iObeyaObj.y; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.width = iObeyaObj.width; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.height = iObeyaObj.height; // pas indispensable, juste facillitant pour les algorythmes
+                    l_list.toReupdate = true; // pour que la note soit redessinée
+                    chainedlist.splice(iii + 1, 0, l_list);// on insert le noeud à l'array
+                    toReupdateFlag = true; // on force le réupdate de la liste de la chaine
+                }
+
+            } // for (var iii = 0; iii < chainedlist.length; iii++) {
+
+            // Place la nouvelle liste dans l'ensemble des notes/cards liées
+            // Repositionne les notes à la suite de l'insert +  indiquer que doit être updaté
+
+            for (var iidx in chainedlist) {
+                var l_idx = chainedlist[iidx].id;
+                var l_idx2 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, l_idx);
+                iObeyaConnectedPlatform.iObeyaNodes[l_idx2].overlappingNotesChain = chainedlist; // on place la (même) liste dans toutes les notes/cards chainées
+
+                if (chainedlist[iidx].toReupdate && //repositionnement de toutes les notes suite à l'insert ?
+                        iidx > 0) {  // sauf si c'est la première de la liste... (code défensif)
+                    var l_idx3 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, chainedlist[iidx - 1].id); // la cible pour le positionnement
+                    var iObeyaOverlapping = findOverlappingElements(iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes); // on récupère les stickers/labels par dessus la note/card
+                    var note2 = placeElement(null, iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes, iObeyaOverlapping, iObeyaConnectedPlatform.iObeyaNodes[l_idx3]);
+                    elementsToUpdate.push(note2); // on ajoute la note à la liste des "elementsToUpdate" (l'update des objets iObeya est traité en fin de processus de synchro)
+                    elementsToUpdate = elementsToUpdate.concat(iObeyaOverlapping); // on ajoute les éléments supperposés
+                }
+            } //for (var iidx in chainedlist) {
+
+        }
+
+    return elementsToUpdate;
 }
 
 /*** Détermination de l'action à effectuer sur une étiquette "Ressource" (création, modification, suppression) ***/
@@ -1767,17 +1967,17 @@ function managePercentCompleteStickerUpdate(iObeyaConnectedPlatform, ridaObj, no
     var stickerMapping = PERCENTAGE_IOBEYASTICKER_MAPPING;
     var percentSticker = getAssociatedPercentCompleteSticker(overlappingElements);
     if (ridaObj.percentComplete == null && percentSticker != null) {
-        // 1er cas : suppression
+// 1er cas : suppression
         removeiObeyaElement(iObeyaConnectedPlatform, percentSticker.id); // la suppression est immédiate, appel de l'url de suppression
         removeNodeFromiObeyaNodes(percentSticker, iObeyaNodes);
         percentSticker = null;
     } else if (ridaObj.percentComplete != null && percentSticker == null) {
-        // 2e cas : création
+// 2e cas : création
         percentSticker = createSticker(iObeyaConnectedPlatform, ridaObj, ridaObj.percentComplete, stickerMapping);
         iObeyaNodes.push(percentSticker);
         percentSticker = placePercentCompleteSticker(percentSticker, note); // placé sur la note
     } else if (ridaObj.percentComplete != null && percentSticker != null && percentSticker.name != PERCENTAGE_IOBEYASTICKER_MAPPING.map[ridaObj.percentComplete].name) {
-        // 3e cas : mise à jour
+// 3e cas : mise à jour
         percentSticker = updateSticker(iObeyaConnectedPlatform, percentSticker, ridaObj, ridaObj.percentComplete, stickerMapping);
     } else {
         return null;
@@ -1802,17 +2002,17 @@ function managePriorityStickerUpdate(iObeyaConnectedPlatform, ridaObj, note, ove
     var stickerMapping = PRIORITY_IOBEYASTICKER_MAPPING;
     var prioritySticker = getAssociatedPrioritySticker(overlappingElements);
     if (ridaObj.priority == null && prioritySticker != null) {
-        // 1er cas : suppression
+// 1er cas : suppression
         removeiObeyaElement(iObeyaConnectedPlatform, prioritySticker.id); // la suppression est immédiate, appel de l'url de suppression
         removeNodeFromiObeyaNodes(prioritySticker, iObeyaNodes);
         prioritySticker = null;
     } else if (ridaObj.priority != null && prioritySticker == null) {
-        // 2e cas : création
+// 2e cas : création
         prioritySticker = createSticker(iObeyaConnectedPlatform, ridaObj, ridaObj.priority, stickerMapping);
         iObeyaNodes.push(prioritySticker);
         prioritySticker = placePrioritySticker(prioritySticker, note); // placé sur la note
     } else if (ridaObj.priority != null && prioritySticker != null && prioritySticker.name != PRIORITY_IOBEYASTICKER_MAPPING.map[ridaObj.priority].name) {
-        // 3e cas : mise à jour
+// 3e cas : mise à jour
         prioritySticker = updateSticker(iObeyaConnectedPlatform, prioritySticker, ridaObj, ridaObj.priority, stickerMapping);
     } else {
         return null;
@@ -1828,7 +2028,7 @@ function managePriorityStickerUpdate(iObeyaConnectedPlatform, ridaObj, note, ove
  ***/
 
 function fillNoteForiObeya(note, ridaObj) {
-    // Vérification des informations à récupérer
+// Vérification des informations à récupérer
     if (!ridaObj.hasOwnProperty("modificationDate"))
         throw new InterfaceException("Le champ \"modificationDate\" ne figure pas dans la liste des champs RIDA à synchroniser.");
     if (!ridaObj.hasOwnProperty("creator"))
@@ -1964,25 +2164,25 @@ function fillNoteForiObeya(note, ridaObj) {
 
 function mapRidaToIObeya(ridaObj, iObeyaNote) {
 
-    // Parcours de tous les champs du mapping
+// Parcours de tous les champs du mapping
     for (var key in IOBEYANOTE_MAPPING) {
 
-        // 'mapingItem' = 'content'|'title'|'responsible'|...
+// 'mapingItem' = 'content'|'title'|'responsible'|...
         var mappingItem = IOBEYANOTE_MAPPING[key];
         // Vérification de la présence des champs nécessaires
         if (!mappingItem.hasOwnProperty("type")) {
-            // throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'type\'");
+// throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'type\'");
             console.info("L'objet '" + key + "' de transformation de iObeya vers RIDA ne possède pas de champ 'type'. C'est peut-être normal.");
             continue;
         }
         if (!mappingItem.hasOwnProperty("rida_field")) {
-            // throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'rida_field\'");
+// throw new InterfaceException("L'objet '"+key+"' de transformation de RIDA vers iObeya ne possède pas de champ \'rida_field\'");
             console.info("L'objet '" + key + "' de transformation de iObeya vers RIDA ne possède pas de champ 'rida_field'. C'est peut-être normal.");
             continue;
         }
 
-        // on filtre par type de propriété sur la valeur applyto qui correspond au type
-        // si ce n'est le bon type on passe.
+// on filtre par type de propriété sur la valeur applyto qui correspond au type
+// si ce n'est le bon type on passe.
 
         if (mappingItem.class !== iObeyaNote['@class'])
             continue;
@@ -1996,9 +2196,9 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
         var cntconcat = 0;
         // Si valeur RIDA est définie, on la traite
         if (ridaObj[rida_field] != null || rida_field.constructor === Array) {
-            // En fonction du type de traitement voulu pour le champ de la note
+// En fonction du type de traitement voulu pour le champ de la note
             switch (type) {
-                // Mapping simple 1 -> 1
+// Mapping simple 1 -> 1
                 case "text":
                     data = parseNoteText(ridaObj[rida_field]);
                     break;
@@ -2006,7 +2206,7 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
                 case "concat":
                     data = ""; // field type string
                     if (rida_field.constructor === Array) {
-                        // Définition de la chaine de séparation des champs
+// Définition de la chaine de séparation des champs
                         var concatString = ":";
                         if (mappingItem.hasOwnProperty("concatString"))
                             concatString = mappingItem.concatString;
@@ -2059,15 +2259,15 @@ function mapRidaToIObeya(ridaObj, iObeyaNote) {
             } // end switch
         }  // end if(ridaObj[rida_field] || rida_field.constructor === Array)
 
-        // On vient de construire la donnée à mettre dans le champ iObeya
-        // Dans l'arbre de l'objet iObeya, on récupère le parent de l'objet à modifier
-        // (on a aussi besoin d'un pointeur)
+// On vient de construire la donnée à mettre dans le champ iObeya
+// Dans l'arbre de l'objet iObeya, on récupère le parent de l'objet à modifier
+// (on a aussi besoin d'un pointeur)
         var iObeyaPartPtr = getiObeyaPropertyObject(iObeyaNote, key);
         if (iObeyaPartPtr) { // on vérifie que la propriété existe
             iObeyaPartPtr[key] = data;
         } else {
-            // TODO + FIXME : lors de la création d'une note la propriété peut ne pas exister car,
-            // par exemple, props peux être absent...
+// TODO + FIXME : lors de la création d'une note la propriété peut ne pas exister car,
+// par exemple, props peux être absent...
             var debug = true;
         }
     }
@@ -2414,9 +2614,9 @@ function getBoardidFromRidaObj(iObeyaConnectedPlatform, ridaObj) {
                 return iObeyaConnectedPlatform.boards[i].id;
         }
 
-    // le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
-    // utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
-    // TODO : essayer d'enveler la variable defaultboard_index
+// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
+// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
+// TODO : essayer d'enveler la variable defaultboard_index
     console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.props.title + " est vide, utilisation du panneau par défaut : " + iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].name);
     return iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].id; // valeur par défaut.
 }
@@ -2442,7 +2642,7 @@ function getBoardidFromName(iObeyaConnectedPlatform, name, getBoardidFromAllRoom
                     return iObeyaConnectedPlatform.boards[i].id;
             }
         }
-        // le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
+// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
         console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.props.title + " est vide, utilisation du panneau par défaut : " + iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].name);
         return iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].id; // valeur par défaut.
     }
@@ -2456,8 +2656,8 @@ function getBoardNameFromRidaObj(iObeyaConnectedPlatform, ridaObj) {
             if (iObeyaConnectedPlatform.boards[i].name.toLowerCase() === ridaObj.PanneauiObeya.toLowerCase())
                 return iObeyaConnectedPlatform.boards[i].name;
         }
-    // le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
-    // utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
+// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
+// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
     console.log("Warning :  la valeur du panneau de l'entrée RIDA :" + ridaObj.props.title + " est vide, utilisation du panneau par défaut : " + iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].name);
     return iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].name; // valeur par défaut.
 }
@@ -2472,8 +2672,8 @@ function getBoardElementContainerFromBoardName(iObeyaConnectedPlatform, panneaui
                 return iObeyaConnectedPlatform.boards[i].elementContainer;
         }
 
-    // le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
-    // utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
+// le panneau n'est pas précisé dans l'object RIDA ou n'a pas été trouvé
+// utilisation de la valeur par défaut. (sur le premier panneaux du paramétrage)
     console.log("Warning : getBoardElementContainerFromBoardName n'a pas trouvé le board recherché :" + panneauiObeya);
     return iObeyaConnectedPlatform.boards[iObeyaConnectedPlatform.defaultboard_index].elementContainer; // valeur par défaut.
 }
@@ -2483,7 +2683,7 @@ function getBoardElementContainerFromBoardName(iObeyaConnectedPlatform, panneaui
 
 function getEscallationTargetBoardUrl(iObeyaConnectedPlatform, iObeyaObject) {
 
-    // Parmi les éléments qui recouvrent la note, ...
+// Parmi les éléments qui recouvrent la note, ...
     var iObeyaOverlapping = findOverlappingElements(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes);
     // On trouve le sticker d'escalade qui est dessus
     var escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
@@ -2498,7 +2698,7 @@ function getEscallationTargetBoardUrl(iObeyaConnectedPlatform, iObeyaObject) {
                 "\nVérifier le fichier de configuration.");
     }
 
-    // lookup dans le fichier de conf pour determiner l'url de la plateforme à laquelle ce nom de board correspond
+// lookup dans le fichier de conf pour determiner l'url de la plateforme à laquelle ce nom de board correspond
     if (iObeyaConnectedPlatform.ESCALLATION_MAPPING.map[escallationtargetname].hasOwnProperty("target_url")) {
         var target_url = iObeyaConnectedPlatform.ESCALLATION_MAPPING.map[escallationtargetname].target_url;
     } else {
@@ -2529,7 +2729,7 @@ function getEscallationTargetBoardUrl(iObeyaConnectedPlatform, iObeyaObject) {
 
 function getEscallationTargetBoardLabel(iObeyaConnectedPlatform, iObeyaObject) {
 
-    // Parmi les éléments qui recouvrent la note, ...
+// Parmi les éléments qui recouvrent la note, ...
     var iObeyaOverlapping = findOverlappingElements(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes);
     // On trouve le sticker d'escalade qui est dessus
     var escallationSticker = getAssociatedEscallationSticker(iObeyaOverlapping);
@@ -2539,14 +2739,14 @@ function getEscallationTargetBoardLabel(iObeyaConnectedPlatform, iObeyaObject) {
     if (iObeyaConnectedPlatform.ESCALLATION_MAPPING.map[escallationtargetname].hasOwnProperty("target_url")) {
         var target_url = iObeyaConnectedPlatform.ESCALLATION_MAPPING.map[escallationtargetname].target_url;
     } else {
-        // Si l'url n'est pas définie, par défaut on utilise celle de la platforme courante
+// Si l'url n'est pas définie, par défaut on utilise celle de la platforme courante
         target_url = iObeyaConnectedPlatform.IOBEYAURL;
     }
 
     var parent = iObeyaConnectedPlatform.parent;
     // on regarde s'il y a une entrée dans l'array des plateformes
     if (parent.hasOwnProperty(target_url)) {
-        // on recupère les paramètres destination
+// on recupère les paramètres destination
         var target_boardname = iObeyaConnectedPlatform.ESCALLATION_MAPPING.map[escallationtargetname].target_board;
         if (!target_boardname) {
             throw new InterfaceException("Vérifier configuration de escallation ESCALLATION_MAPPING," +
