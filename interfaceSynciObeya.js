@@ -1,9 +1,13 @@
 /**
  Change log...
  
- // version mai 2017
+ // version mai 2018
+ alignment avec modèle d'interface REST de la verrsion 3.6
+ ajout gestion des cards iObeya ( si detail et check list )
+ ajout de la gestion d'un predecesseur entre les cards
  
- 
+ //version décembre 2017
+ diverses améliorations / corection de bogues
  //version septembre 2017
  
  Réécriture et refactoring du code pour permettre que plusieurs plateformes iObeya peuvent maintenant être connectées a une liste sharepoint. La nouvelle façons de faire permet de gérer une structure "connextion à une plateforme" qui peux être multiple.
@@ -75,7 +79,7 @@
  */
 
 // Versionning du script
-g_versionscript = "(v1.3) ";
+g_versionscript = "(v1.4 béta) ";
 var status_todo = 0x10;
 var status_done = 0x20;
 var status_failed = 0x30;
@@ -1156,7 +1160,7 @@ function prepareSyncElements(iObeyaConnectedPlatform) {
                     if (iObeyaObject.toreupdate != undefined) { // on force le reupdate ?
                         iObeyaConnectedPlatform.nodesToUpdate.push(iObeyaObject);
                     }
-                    
+
                     enrichSyncInfoFromiObeyaObject(iObeyaObject, iObeyaConnectedPlatform.iObeyaNodes, l_syncList[idSync]);    // on enrichie la synclist
 
                     break;
@@ -1736,6 +1740,9 @@ function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaO
         iObeyaObj.status = ridaObj.status; // statut cible depuis le Rida, pour un deboggage plus facile
 
         // Placement de l'objet dans le panneau. analyse si predecessor(seur)  / liend entre cards/notes
+        // si oui cela veut dire surtout que la note/card est positionnée quelques pas au dessus du prédécesseur
+
+
         var ridaPredecessosIsInChain = false;
         var ridaPredecessorId = getRidaPredecessorId(ridaObj); // on récupère l'id du prédécesseur dans le rida, si existant
 
@@ -1745,7 +1752,7 @@ function updateNoteIniObeya(iObeyaConnectedPlatform, ridaObj, iObeyaObj, iObeyaO
                 for (var iiiii in iObeyaObj.overlappingNotesChain) {  // maintenant on regarde si la note/card qui correspond au ridaPredecessorId est dans la chaine
                     var l_ridaObj = getRidaObjectByiObeyaId(iObeyaConnectedPlatform.ridaNodes, iObeyaObj.overlappingNotesChain[iiiii].id); // on récupère l'id de la note/card
                     if ((ridaPredecessorId > 0) && l_ridaObj)
-                        if (ridaPredecessorId === l_ridaObj.idRida) { // le précédesseur est dans la chain -> np op.
+                        if (ridaPredecessorId === l_ridaObj.idRida) { // le précédesseur est dans la chain -> no op. 
                             ridaPredecessosIsInChain = true;
                             break;
                         }
@@ -1851,7 +1858,7 @@ function getRidaPredecessorId(ridaObj) {
  * */
 
 function placeChainedListInNoteCard(iObeyaConnectedPlatform, iObeyaObj, ridaObj, ridaTargetObject, elementsToUpdate) {
-    var chainedlist;
+    var chainedlist, sourceChaineList;
     var targetPlaceObject;
 
     if (ridaTargetObject) // code défensif
@@ -1860,7 +1867,7 @@ function placeChainedListInNoteCard(iObeyaConnectedPlatform, iObeyaObj, ridaObj,
             targetPlaceObject = getiObeyaObjectById(iObeyaConnectedPlatform.iObeyaNodes, ridaTargetObject.idiObeya); // on récupère la note/card iObeya
 
             if (targetPlaceObject === null) {  // si la note cible n'existe pas (encore), on force le reupdate pour que cela soit traité dans une seconde passe, mais problème...
-                // on ajoute ici le minimum vital c'est à dire l'id de la cible cela est suffisant pour la logique de la fonction : getNotePredecessor(nodesRida, oListItem, iObeyaNote) {
+                // on ajoute ici le minimum vital c'est à dire l'id de la cible, pour la logique de la fonction : getNotePredecessor(nodesRida, oListItem, iObeyaNote) {
                 // qui servira ensuite pour createCAMLupdateRidaEntry ( une fois la note créé > l'entrée du rida est mise à jour )
                 chainedlist = [];
                 var l_list = [];
@@ -1871,60 +1878,87 @@ function placeChainedListInNoteCard(iObeyaConnectedPlatform, iObeyaObj, ridaObj,
             } else { // la cible existe
 
                 if (!targetPlaceObject.hasOwnProperty("overlappingNotesChain")) // on vérifie que la card/note cible dispose d'une liste overlappingNotesChain
-                    targetPlaceObject.overlappingNotesChain = []; // non on l'initialise
+                    targetPlaceObject.overlappingNotesChain = []; // non, on l'initialise
 
-                chainedlist = targetPlaceObject.overlappingNotesChain; // on dispose ici de la list chainée en état initial
-
-                if (chainedlist.length === 0) { // si elle est vide on commence par ajouter la note/card "cible" en premier
-                    var l_list = [];
-                    l_list.id = targetPlaceObject.id; // l'id iObeya
-                    l_list.listId = 0; // l'id dans la liste
-                    l_list.props = targetPlaceObject.props; // pas indispensable, juste facillitant pour le debug
-                    l_list.zOrder = targetPlaceObject.zOrder; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.x = targetPlaceObject.x; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.y = targetPlaceObject.y; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.width = targetPlaceObject.width; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.height = targetPlaceObject.height; // pas indispensable, juste facillitant pour les algorythmes
-                    chainedlist.push(l_list); // on ajoute le noeud à l'array
-                }
+                chainedlist = targetPlaceObject.overlappingNotesChain; // on dispose ici de la list chainée dans la var chainedlist
             }// else: if (targetPlaceObject) {
 
-            // à cet endroit une liste existe. on loop dans cette liste pour insérer la nouvelle note dans la chaine
-            var toReupdateFlag = false;
+            // On vérifie que la note "target" est bien dans la liste de la target. ( en premier normalement )
 
-            for (var iii = 0; iii < chainedlist.length; iii++) {
-
-                chainedlist[iii].toReupdate = toReupdateFlag; // on indique qu'il faut faire un réupdate de la note/cards et des suivantes
-                if (toReupdateFlag)
-                    chainedlist[iii].listId = iii;// il faut renuméroter la liste
-
+            var foundTargetInArrayId = -1;
+            for (var iii = 0; iii < chainedlist.length; iii++) { // loope dans l'array
                 if (chainedlist[iii].id === targetPlaceObject.id) {
-                    var l_list = [];
-                    l_list.id = iObeyaObj.id; // l'id iObeya
-                    l_list.listId = iii;// l'id dans la liste, sera +1 au prochain
-                    l_list.props = iObeyaObj.props; // pas indispensable, juste facillitant pour le debug
-                    l_list.zOrder = iObeyaObj.zOrder; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.x = iObeyaObj.x; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.y = iObeyaObj.y; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.width = iObeyaObj.width; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.height = iObeyaObj.height; // pas indispensable, juste facillitant pour les algorythmes
-                    l_list.toReupdate = true; // pour que la note soit redessinée
-                    chainedlist.splice(iii + 1, 0, l_list);// on insert le noeud à l'array
-                    toReupdateFlag = true; // on force le réupdate de la liste de la chaine
+                    foundTargetInArrayId = iii;
+                    break;
                 }
-
             } // for (var iii = 0; iii < chainedlist.length; iii++) {
 
-            // Place la nouvelle liste dans l'ensemble des notes/cards liées
-            // Repositionne les notes à la suite de l'insert +  indiquer que doit être updaté
+
+            // si la note de destination n'existe pas dans l'array on l'insère en premier dans la liste
+
+            if (foundTargetInArrayId === -1) {
+                var l_list = [];
+                l_list.id = targetPlaceObject.id; // l'id iObeya
+                l_list.listId = 0; // l'id dans la liste
+                l_list.props = targetPlaceObject.props; // pas indispensable, juste facillitant pour le debug
+                l_list.zOrder = targetPlaceObject.zOrder; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.x = targetPlaceObject.x; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.y = targetPlaceObject.y; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.width = targetPlaceObject.width; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.height = targetPlaceObject.height; // pas indispensable, juste facillitant pour les algorythmes
+                chainedlist.chainedlist.splice(0, 0, l_list);// on insert le noeud au début de l'array
+
+                foundTargetInArrayId = 0; // on indique que la cible est à la position zéro
+            }
+
+            // on regarde si la note courante possède une liste, si oui on filtre les entrées avant elle
+            // si n'existe pas on créer une liste avec son entrée insérée
+
+            if (!iObeyaObj.hasOwnProperty("overlappingNotesChain")) // on vérifie que la card/note cible dispose d'une liste overlappingNotesChain
+                iObeyaObj.overlappingNotesChain = []; // non, on l'initialise
+
+            sourceChaineList = iObeyaObj.overlappingNotesChain; // on dispose ici de la list chainée en état initial
+            var foundCurrentInArrayId = false;
+
+            for (var iii = 0; iii < sourceChaineList.length; iii++) { // on supprime toutes les entrées avant la note courante
+                if (sourceChaineList[iii].id === iObeyaObj.id) {
+                    foundCurrentInArrayId = true;
+                    break;
+                }
+                sourceChaineList.splice(iii, 1); // pas encore trouvé la cible on supprime l'entée
+            }
+
+            if (!foundCurrentInArrayId) { // la note courante n'existe pas, on l'ajoute
+                var l_list = []; // oui on insère l'entrée dans la liste juste ensuite la cible
+                l_list.id = iObeyaObj.id; // l'id iObeya
+                l_list.listId = 0;// l'id dans la liste, note sera +1 au prochain passage de la boucle
+                l_list.props = iObeyaObj.props; // pas indispensable, juste facillitant pour le debug
+                l_list.zOrder = iObeyaObj.zOrder; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.x = iObeyaObj.x; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.y = iObeyaObj.y; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.width = iObeyaObj.width; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.height = iObeyaObj.height; // pas indispensable, juste facillitant pour les algorythmes
+                l_list.toReupdate = true; // pour que la note soit redessinée
+                sourceChaineList.splice(0, 0, l_list);// on insert le noeud juste après le noeud cible
+            }
+            var foundTargetInArrayIdInc = foundTargetInArrayId; // copie locale
+// on renumérote l'ensemble de la liste à partir de l'id de la cible
+            for (var iii = 0; iii < sourceChaineList.length; iii++) {
+                foundTargetInArrayIdInc++;
+                sourceChaineList[iii].listId = foundTargetInArrayIdInc;// l'id dans la liste, note sera +1 au prochain passage de la boucle
+            }
+
+            chainedlist = chainedlist.concat(sourceChaineList); // concaténation des 2 listes
+            // ok, on dispose d'une liste mis à jour, on positionne dans iObeya l'ensemble des notes/cards liées 
+            // et indiquées comme devant être (re)positionné
 
             for (var iidx in chainedlist) {
                 var l_idx = chainedlist[iidx].id;
                 var l_idx2 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, l_idx);
                 iObeyaConnectedPlatform.iObeyaNodes[l_idx2].overlappingNotesChain = chainedlist; // on place la (même) liste dans toutes les notes/cards chainées
 
-                if (chainedlist[iidx].toReupdate && //repositionnement de toutes les notes suite à l'insert ?
-                        iidx > 0) {  // sauf si c'est la première de la liste... (code défensif)
+                if (iidx > foundTargetInArrayId && //repositionnement de toutes les notes suite à l'insert ?
+                        iidx > 0) {  // sauf si c'est la première de la liste, ce qui ne devrait pas arriver... (code défensif)
                     var l_idx3 = getiObeyaIndexObjectById(iObeyaConnectedPlatform.iObeyaNodes, chainedlist[iidx - 1].id); // la cible pour le positionnement
                     var iObeyaOverlapping = findOverlappingElements(iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes); // on récupère les stickers/labels par dessus la note/card
                     var note2 = placeElement(null, iObeyaConnectedPlatform.iObeyaNodes[l_idx2], iObeyaConnectedPlatform.iObeyaNodes, iObeyaOverlapping, iObeyaConnectedPlatform.iObeyaNodes[l_idx3]);

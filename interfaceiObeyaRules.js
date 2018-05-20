@@ -204,13 +204,13 @@ function placeElement(rollObject, note, nodesiObeya, overLappingElements, overNo
         // L'utilisateur fera le placement final ( limitation de la portée de l'algorythme de placement)
 
         if (overNote !== null) { // placement de la note note/card sur une cible 
-            if (overNote.hasOwnProperty("overlappingNotesChain")) // Si la note cible possède un ensemble de notes chainées, on utilise la position de la dernière note du chainage.
+            /*if (overNote.hasOwnProperty("overlappingNotesChain")) // Si la note cible possède un ensemble de notes chainées, on utilise la position de la dernière note du chainage.
                 if (overNote.overlappingNotesChain.length > 1) { // on saute le dernier éléments qui est la note à placer, au minima il a  2 entrées : la cible et la note à placer.
                     var idx = overNote.overlappingNotesChain.length - 2;
                     if (idx < 0)
                         idx = 0; // defensif
                     overNote = overNote.overlappingNotesChain[idx]; // les propriétés disponibles ici sont suffisantes pour l'algorithme qui suit ( ce n'est pas une note/card complète)
-                }
+                }*/
 
             X = overNote.x + 25;
             Y = overNote.y + 25;
